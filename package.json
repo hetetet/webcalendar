@@ -1,0 +1,30 @@
+{
+  "name": "second-project",
+  "version": "1.0.0",
+  "description": "second assignment from heaventree internship",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Lee Yeonju",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.1.3",
+    "ejs": "^3.1.8",
+    "express": "^4.18.2",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.17.3",
+    "fastest-validator": "^1.15.0",
+    "mongoose": "^6.7.2",
+    "mongoose-session": "^0.0.4",
+    "nodemon": "^2.0.20",
+    "nunjucks": "^3.2.3",
+    "passport": "^0.6.0",
+    "passport-kakao": "^1.0.1",
+    "passport-naver": "^1.0.6",
+    "passport-naver-v2": "^2.0.8",
+    "qs": "^6.11.0",
+    "request": "^2.88.2",
+    "session-file-store": "^1.5.0"
+  }
+}

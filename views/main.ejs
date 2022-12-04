@@ -1,0 +1,498 @@
+
+  <span id="buttons">
+    <button id="bgcolor" class="defaultbutton" onclick="location.href='/stats'">태그 통계</button>
+    <button id="bgcolor"  class="defaultbutton" onclick="location.href='/dashboard'">대시보드</button>
+  </span>
+  <h1 style="width: 100%; text-align: center">일정 관리</h1>
+  <div id="maincontainer">
+    <div id="category">
+      <span id="category_header">
+        <h2 style="width: 60%; text-align: left; margin-left: 5%;">카테고리</h2>
+        <button id="addcategory" class="addbtn" onclick="openModal()">+</button>
+      </span>  
+      <h3 style="width: 60%; text-align: left; margin-left: 5%;">생성한 일정</h3>  
+      <div id="created-category">        
+      </div>  
+      <h3 style="width: 60%; text-align: left; margin-left: 5%;">공유 받은 일정</h3>
+      <div id="shared-category">        
+      </div>  
+    </div>
+    <div id='calendar'></div>
+  </div>
+  <div class="modal hidden">
+    <div class="modal__overlay">
+      <div id="modal_category" class="modal__content">
+        <span class="modal__header">
+          <h1>카테고리 추가하기</h1>
+          <button class="close" onclick="closeModal()">X</button>
+        </span>
+        <div id="category-title-box" class="category-infos">
+          <span>카테고리 제목: </span>
+          <textarea id="category-title"></textarea>
+        </div>
+        <div id="category-tag-box" class="category-infos">
+          <span>태그: </span>
+          <span id="category-tag-list">
+            <span id="category-tag-addarea">
+              <textarea id= "category-tag-textbox" ></textarea>
+              <button id="addtag" class="addbtn">+</button>
+            </span>
+            <div class="count"><span id="tag-val-num">0</span>/50</div>
+            <div id="taglist"></div>
+          </span>
+        </div>
+        <div id="category-sharecheck-box" class="category-infos" >
+          <div>공유여부: </div>
+          <label><input type="checkbox" name="category-sharecheck"></label>
+        </div>
+        <div id="category-share-box" class="category-infos" style="visibility: hidden;">
+          <div>공유할 사용자 </div>
+          <button id="adduser" class="addbtn" style="width: 30px; height: 30px; text-align: justify;" onclick="opensubModal()">+</button>
+        </div>
+        <div id="category-sharelist-box" class="category-infos">
+          <div></div>
+          <div id="category-sharelist"></div>
+        </div>
+        <button id="savecategory" class="defaultbutton" onclick="savecategory()">카테고리 저장</button>
+      </div>
+    </div>
+  </div>
+  <div class="submodal hidden">
+    <div id="modal_users" class="modal__content">
+      <span class="modal__header">
+        <h1>공유할 사용자 목록</h1>
+        <button class="closesub" onclick="closesubModal()">X</button>
+      </span>        
+      <div id="user-list">
+      </div>
+      <button id="sharecategory" class="defaultbutton" style="margin-top: 5px;" onclick="saveuser()">공유하기</button>
+    </div>
+  </div>
+
+<link href='/fullcalendar/main.css' rel='stylesheet'/>
+<script src='/fullcalendar/main.js'></script>
+<script>
+/**
+ *카테고리 생성 모달 띄우기 
+**/
+let tags=[];
+let remove_tags=[];
+
+const addTodoBtn=document.getElementById('addTodoBtn');
+const todoModal=document.querySelector('.modal');
+const overlay=todoModal.querySelector(".modal__overlay");
+const closeBtn=todoModal.querySelector(".close");
+let user_idnames=new Set();
+
+const openModal=()=>{
+    document.querySelector('#category-title').value='';
+    document.querySelector("#taglist").innerHTML='' //태그 목록 자식 노드 싹 다 비우기
+    document.querySelector('#category-tag-textbox').value='';
+    document.querySelector("#category-sharelist").innerHTML='' //사용자 목록 자식 노드 싹 다 비우기
+    tags=[]
+    remove_tags=[]
+    todoModal.classList.remove("hidden")
+  }
+const closeModal=()=>{
+    user_idnames=new Set()//이름 목록도 비우기
+    todoModal.classList.add("hidden")
+  }
+  /**
+  * 카테고리 공유여부
+  **/
+  const category_sharecheck_box=document.getElementsByName('category-sharecheck')
+  const category_share=document.getElementById('category-share-box')
+  category_sharecheck_box[0].addEventListener('click',()=>{
+    if(!category_sharecheck_box[0].checked){
+      category_share.style.visibility = "hidden"
+      document.querySelector("#category-sharelist").innerHTML='' //자식 노드 싹 다 비우기
+    }else{
+      category_share.style.visibility = "visible"
+    }
+  })
+  /**
+  * 카테고리에 태그 추가
+  **/
+  //add tag
+  const category_tag_textbox=document.getElementById('category-tag-textbox')
+  const addtag=document.getElementById('addtag')
+  const taglist=document.getElementById('taglist')
+  const tag_val_num=document.getElementById('tag-val-num')
+
+    category_tag_textbox.addEventListener("keyup",()=>{
+      console.log(category_tag_textbox.value.length)
+      tag_val_num.innerHTML=category_tag_textbox.value.length;
+      if (category_tag_textbox.value.length > 50){
+        alert("태그는 최대 50자까지 입력 가능합니다.");
+        category_tag_textbox.value=category_tag_textbox.value.substring(0, 50)
+        //$(this).val(category_tag_textbox.value.substring(0, 50));
+        tag_val_num.innerHTML=50;
+      }
+    })
+    addtag.addEventListener("click",()=>{
+    //add tag in taglist
+    if(category_tag_textbox.value.length>0 && !tags.includes(category_tag_textbox.value)){
+        addTag(category_tag_textbox.value)
+      }
+    })
+
+    function addTag(tagname){
+      if(tags.includes(tagname))
+        return;
+      let index=tags.push(tagname)
+      let tagItem=document.createElement("div")
+      tagItem.classList.add("item");
+      tagItem.style.backgroundColor='lightgray'
+      tagItem.innerHTML=`
+        <span class="delete-btn" onclick="deleteTag(this,'${tagname}')" style="cursor: pointer;">
+          &times;
+        </span>
+        <span>${tagname}</span>`;  
+      taglist.appendChild(tagItem);
+      console.log("tags after add tag:", tags)   
+      console.log("remove_tags after add tag:", remove_tags)       
+    }
+
+    function deleteTag(ref,tag){
+      let parent=ref.parentNode.parentNode
+      parent.removeChild(ref.parentNode)
+      let index=tags.indexOf(tag);
+      tags.splice(index,1);
+      console.log("tags after delete tag:", tags)   
+      console.log("remove_tags after delete tag:", remove_tags)  
+    }
+
+    /**
+    * 사용자 목록 모달 띄우기
+    **/
+    const adduser=document.getElementById('adduser');
+    const userModal=document.querySelector('.submodal');
+    const closesubBtn=todoModal.querySelector(".closesub");
+
+    const opensubModal=()=>{
+    userModal.classList.remove("hidden")
+    fetch("/userlist",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    })
+    .then(data => {
+    console.log(data.data); //공유할 수 있는 사용자 목록(본인을 제외한 모든 사용자)
+    let userlist=data.data
+    console.log("userlist: ",userlist); 
+    for(user in userlist){
+        let userstr=userlist[user]
+        console.log("userstr: ", userstr)
+        let userjson=JSON.parse(userstr)
+        let user_element=document.createElement("div")
+        let checkbox_elem
+        console.log(JSON.stringify(userjson));
+        console.log("user_idnames: ",user_idnames)
+        console.log("hasuser: ",user_idnames.has(userstr))
+        if(user_idnames.has(userstr)){
+          checkbox_elem=`<input type="checkbox" value='${userstr}' onclick="addUser(this)" checked="true" name="category-sharecheck">`
+        }else{
+          checkbox_elem=`<input type="checkbox" value='${userstr}' onclick="addUser(this)" name="category-sharecheck">`
+        }
+        user_element.innerHTML=checkbox_elem+`
+          <img class="pfp_inlist" src=${userjson.pfpurl}/>
+          <span>${userjson.name}</span>
+        `;  
+        document.querySelector("#user-list").appendChild(user_element);
+      }
+      //이미 set에 있는 사용자라면 체크하기
+      })
+    }
+      const closesubModal=()=>{
+      document.querySelector("#user-list").innerHTML='' //자식 노드 싹 다 비우기
+      userModal.classList.add("hidden")
+    }
+
+    /**
+    *유저 id, 유저 이름 배열 삽입 및 삭제
+    **/
+    function addUser(ref){
+      if(ref.checked){
+        console.log("Add", ref.value) 
+        user_idnames.add(ref.value)
+      }else{
+        console.log("Delete", ref.value) 
+        user_idnames.delete(ref.value)      
+      }
+      console.log(user_idnames);
+    }
+
+    /**
+    * 공유할 사용자 카테고리 생성 목록으로 넘기기
+    **/
+    const userlist=document.getElementById("category-sharelist")
+      function saveuser(){
+      document.querySelector("#category-sharelist").innerHTML='' //자식 노드 싹 다 비우기
+      console.log(user_idnames.size);
+      for(let item of user_idnames){
+        let userjson=JSON.parse(item)
+        let user_element_category=document.createElement("div")
+        user_element_category.innerHTML=`
+            <span class="delete-btn" value='${item}' onclick="deleteUserelem(this)" style="cursor: pointer;">
+              &times;
+            </span>
+            <img class="pfp_inlist" src=${userjson.pfpurl}/>
+            <span>${userjson.name}</span>
+            `;  
+          userlist.appendChild(user_element_category);
+        }
+        document.querySelector("#user-list").innerHTML='' //자식 노드 싹 다 비우기
+        userModal.classList.add("hidden")
+      }
+    
+      function deleteUserelem(ref){
+      let parent=ref.parentNode.parentNode
+      parent.removeChild(ref.parentNode)
+      console.log(ref.getAttribute("value"))
+      user_idnames.delete(ref.getAttribute("value"))
+      console.log(user_idnames)
+    }
+    /**
+    *카테고리 저장하기
+    */
+    function savecategory(){
+      if(document.querySelector("#category-title").value==0){
+        alert("카테고리 제목은 필수 입력 항목입니다.")
+        return
+      }
+      let useridarr=[]
+      if(category_sharecheck_box[0].checked){
+        for(let item of user_idnames){
+          useridarr.push(JSON.parse(item)._id)
+        }
+      }
+      console.log(useridarr);
+      console.log("tags before fetch to server:", tags)
+      console.log("remove_tags before fetch to server:", remove_tags)
+      let data = {
+        title: document.querySelector("#category-title").value,
+        tags: tags,
+        removetags: remove_tags,
+        uploader: `<%- JSON.parse(userinfo)._id %>`,
+        share_user:useridarr
+      }
+      console.log(data)
+      fetch("/savecategory",{
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data)
+        }).then(res => {
+          if (!res.ok) {
+            throw new Error("HTTP error " + res.status);
+            return res.json();   
+          }                         
+        })
+      alert("카테고리를 저장하였습니다.")   
+      document.querySelector("#user-list").innerHTML='' //자식 노드 싹 다 비우기
+      userModal.classList.add("hidden")
+      fetchCreatedCat()
+      closeModal()
+    }
+    /**
+    *페이지가 로딩되면 달력을 렌더링하는 이벤트리스너 
+    */
+    document.addEventListener('DOMContentLoaded', function() {
+    let calendarEl = document.getElementById('calendar');
+    //일정 목록 가져오기
+    fetch("/todolist",{
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+    }).then(res => {
+        if (!res.ok) {
+        throw new Error("HTTP error " + res.status);
+        }
+        return res.json();                              
+    })
+    .then(data => {
+          //console.log(data.data)
+          let eventstrlist=data.data;
+          let eventlist=[];
+          for(let i=0;i<eventstrlist.length;i++){
+          //console.log(eventstrlist[i])
+          eventlist.push(JSON.parse(eventstrlist[i]))
+        }
+
+        let calendar = new FullCalendar.Calendar(calendarEl, {
+        timeZone: 'Asia/Seoul',
+        headerToolbar: {
+          left: 'prevYear,prev,next,nextYear',
+          center: 'title',
+          right: 'today'
+        },
+          editable: false,
+          selectable: true,
+          businessHours: true,
+          dayMaxEvents: true, // allow "more" link when too many events
+          events: eventlist
+        });
+        calendar.render();
+    })
+    fetchCreatedCat()
+    fetchSharedCat()
+});
+
+let created_categories=document.querySelector('#created-category')
+let shared_categories=document.querySelector('#shared-category')
+
+/**
+ *본인이 생성한 카테고리 목록을 가져오는 함수
+ */
+function fetchCreatedCat(){
+  fetch("/created-category",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    }).then(data => {
+      // console.log("created category: ", data)
+      let create_cat_arr=data.data;
+      created_categories.innerHTML=''
+      for(index in create_cat_arr){
+        console.log(create_cat_arr[index].title)
+        let created_cat=document.createElement('div')
+        created_cat.classList.add('created-cat')
+        created_cat.innerHTML=`
+          <span class="created-cat-title">${create_cat_arr[index].title}</span>
+          <button id="edit-category" class="cat-btn" onclick="fetchCategory(this,'${create_cat_arr[index].title}')">수정</button>
+          <button id="delete-category" class="cat-btn" onclick="deleteCategory(this,'${create_cat_arr[index].title}')">삭제</button>
+          `
+        created_categories.appendChild(created_cat);
+      }
+    })
+}
+
+/**
+ *공유받은 카테고리 목록을 가져오는 함수
+ */
+function fetchSharedCat(){
+  fetch("/shared-category",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    }).then(data => {
+      // console.log("shared category: ", data)
+      let shared_cat_arr=data.data;
+      shared_categories.innerHTML=''
+      for(index in shared_cat_arr){
+        console.log(shared_cat_arr[index].title)
+        let shared_cat=document.createElement('div')
+        shared_cat.classList.add('shared-cat')
+        shared_cat.innerHTML=`
+          <span class="shared-cat-title">${shared_cat_arr[index].title}</span>
+          `
+        shared_categories.appendChild(shared_cat);
+      }
+    })
+}
+
+function fetchCategory(ref,catname){
+  console.log("edit "+catname)
+  let parent=ref.parentNode
+  console.log("parent: ",parent)
+  fetch("/readcategory",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({"title":catname})
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    }).then(data => {
+      openModal()
+      let catobj=data.data
+      document.querySelector('#category-title').value=data.data.title;
+      tags=data.data.tags;
+      remove_tags=Array.from(tags);
+      console.log("tags after fetch from server:", tags)
+      console.log("remove_tags after fetch from server:", remove_tags)
+      taglist.innerHTML=''
+      for(index in tags){
+        let tagItem=document.createElement('div')
+        tagItem.classList.add("item");
+        tagItem.style.backgroundColor='lightgray'
+        tagItem.innerHTML=`
+        <span class="delete-btn" onclick="deleteTag(this,'${tags[index]}')" style="cursor: pointer;">
+          &times;
+        </span>
+        <span>${tags[index]}</span>`;  
+        taglist.appendChild(tagItem);  
+      }
+      let users=data.users
+      if(users.length>0){
+        console.log(users)
+        category_sharecheck_box[0].checked=true
+        category_share.style.visibility = "visible"
+        for(let index in users){
+          user_idnames.add(JSON.stringify([index]))
+          // console.log("userid:",users[index]._id)
+          // console.log("userpfp:",users[index].pfpurl)
+          // console.log("username:",users[index].name)
+          let user_element_category=document.createElement("div")
+          user_element_category.innerHTML=`
+            <span class="delete-btn" value='${users[index]}' onclick="deleteUserelem(this)" style="cursor: pointer;">
+              &times;
+            </span>
+            <img class="pfp_inlist" src=${users[index].pfpurl}/>
+            <span>${users[index].name}</span>
+            `;  
+          userlist.appendChild(user_element_category);
+        }
+      }
+    })
+}
+
+function deleteCategory(ref,catname){
+  console.log("delete "+catname)
+  let parent=ref.parentNode.parentNode
+ parent.removeChild(ref.parentNode)
+  console.log("parent: ",parent)
+  fetch("/deletecategory",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      "title":catname,
+    })
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+  })
+}
+</script>
+
+

@@ -1,0 +1,62 @@
+<header id="header_area">
+    <% if (loginby=='naver') { %>
+        <img src="/image/navericon.png" id="naver" class="loginby" />      
+    <% } %>
+    <% if (loginby=='kakao') { %>
+        <img src="/image/kakaotalk_sharing_btn_small.png" id="naver" class="loginby" />
+    <% } %>
+    <img id="pfp" src="<%- JSON.parse(userinfo).pfpurl %>"/>
+    <p id="username"><%- JSON.parse(userinfo).name %>님, 환영합니다. </p>  
+    <span id="centermargin"></span>
+    <button id="bgcolor" class="defaultbutton" onclick="showBgColorList()">배경색</button>
+    <button id="logout" class="defaultbutton"  onclick="location.href='/logout'">로그아웃</button>
+</header>
+<div id="bg_color_list">
+    <span id="bg_select_blue" class="colorselect" onclick="changeBgColor('lightcyan')"></span>
+    <span id="bg_select_red" class="colorselect" onclick="changeBgColor('lightpink')"></span>
+    <span id="bg_select_green" class="colorselect" onclick="changeBgColor('lightgreen')"></span>
+    <span id="bg_select_yellow" class="colorselect" onclick="changeBgColor('lightyellow')"></span>
+    <span id="bg_select_violet" class="colorselect" onclick="changeBgColor('lavender')"></span>
+</div>
+<script>
+
+    let header_area=document.getElementById('header_area');
+    document.addEventListener('DOMContentLoaded', function() {
+        header_area.style.backgroundColor='<%-JSON.parse(userinfo).bg_color %>'
+        console.log('change bg color to ','<%-JSON.parse(userinfo).bg_color %>')
+    });
+
+    function logout(){
+      if('<%- loginby %>'=='naver'){
+        window.open('http://nid.naver.com/nidlogin.logout')
+        window.location.href=('http://127.0.0.1:3000')
+      }
+    }
+
+    function showBgColorList(){
+        bg_color_list=document.getElementById('bg_color_list');
+        if(bg_color_list.style.visibility == "visible"){
+            console.log("visible")
+            bg_color_list.style.visibility = "hidden"
+        }else{
+            console.log("hidden")
+            bg_color_list.style.visibility = "visible"
+        }
+    }
+
+    function changeBgColor(color){
+
+        header_area.style.backgroundColor=color;
+        let data = {
+            _id: "<%- JSON.parse(userinfo)._id %>",
+            color: color,
+        }
+        fetch("/changecolor",{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data)
+        }).then((response) => console.log("response:"+response));
+    }
+  </script>

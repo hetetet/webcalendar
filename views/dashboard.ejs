@@ -1,0 +1,329 @@
+<link href='/css/dashboard.css' rel='stylesheet' />
+<h1 style="width: 100%; text-align: center">대시보드</h1>
+<span id="dashheader">
+    <button id="bgcolor"  class="defaultbutton" onclick="location.href='/main'" >홈으로</button>
+    <button id="addTodoBtn"  class="defaultbutton" >일정 추가</button>
+</span>
+<div id="todocontainer">
+    <div class="modal hidden">
+        <div class="modal__overlay"></div>
+        <div class="modal__content">
+            <span class="modal__header">
+                <h1>일정 추가하기</h1>
+                <button class="close">X</button>
+            </span>
+            <div id="todo-title-box" class="todo-infos">
+                <span>일정 제목: </span>
+                <textarea id="todo-title"></textarea>
+            </div>
+            <div id="todo-content-box" class="todo-infos">
+                <span>내용: </span>
+                <textarea id="todo-content"></textarea>
+            </div>            
+            <div id="todo-start-box" class="todo-infos">
+                <div>
+                    <div>시작일: </div>
+                    <label><input type="checkbox" name="start-wholeday-checkbox" checked="true">종일</label>
+                </div>
+                <span>
+                    <select id="startyear">
+                        <option selected="selected"><%= new Date().getFullYear();%></option>
+                        <option><%= new Date().getFullYear()+1;%></option>
+                        <option><%= new Date().getFullYear()+2;%></option>
+                    </select>년
+                    <select id="startmonth">
+                        <% let options_month_start = []; %>
+                        <% for(let i = 1; i <= 12; i++) { %>
+                          <option value='<%= i %>'><%= i %></option>
+                        <% } %>
+                    </select>월
+                    <select id="startday">
+                        <% let options_day_start = []; %>
+                        <% let days = 31; %>
+                        <% for(let i = 1; i <= days; i++) { %>
+                          <option value='<%= i %>'><%= i %></option>
+                        <% } %>
+                    </select>일
+                    <div id="start-wholeday" style="visibility: hidden;">
+                        <select id="startampm">
+                            <option value="a">am</option>
+                            <option value="p">pm</option>
+                        </select>                    
+                        <select id="starthour">
+                            <% let options_hour_start = []; %>
+                            <% for(let i = 1; i <= 12; i++) { %>
+                              <option value='<%= i %>'><%= i %></option>
+                            <% } %>                        
+                        </select>시
+                        <select id="startmin">
+                            <% let options_min_start = []; %>
+                            <% for(let i = 0; i <= 60; i++) { %>
+                              <option value='<%= i %>'><%= i %></option>
+                            <% } %>  
+                        </select>분
+                    </div>
+                </span>
+            </div>            
+            <div id="todo-end-box" class="todo-infos">
+                <div>
+                    <div>종료일: </div>
+                    <label><input type="checkbox" name="end-wholeday-checkbox" checked="true"> 종일</label>
+                </div>
+                <span>
+                    
+                    <select id="endyear">
+                        <option selected="selected"><%= new Date().getFullYear();%></option>
+                        <option><%= new Date().getFullYear()+1;%></option>
+                        <option><%= new Date().getFullYear()+2;%></option>
+                    </select>년
+                    <select id="endmonth">
+                        <% let options_month_end = []; %>
+                        <% for(let i = 1; i <= 12; i++) { %>
+                          <option value='<%= i %>'><%= i %></option>
+                        <% } %>
+                    </select>월
+                    <select id="endday">
+                        <% let options_day_end = []; %>
+                        <% for(let i = 1; i <= 31; i++) { %>
+                          <option value='<%= i %>'><%= i %></option>
+                        <% } %>
+                    </select>일
+                    <div id="end-wholeday" style="visibility: hidden;">
+                        <select id="endampm">
+                            <option value="a">am</option>
+                            <option value="p">pm</option>
+                        </select>
+                        <select id="endhour">
+                            <% let options_hour_end = []; %>
+                            <% for(let i = 1; i <= 12; i++) { %>
+                            <option value='<%= i %>'><%= i %></option>
+                            <% } %>                        
+                        </select>시
+                        <select id="endmin">
+                            <% let options_min_end = []; %>
+                            <% for(let i = 0; i < 60; i++) { %>
+                            <option value='<%= i %>'><%= i %></option>
+                            <% } %>  
+                        </select>분
+                    </div>
+                </span>
+            </div>
+            <div id="todo-priority-box" class="todo-infos">
+                <span>우선순위: </span>
+                <select id="todo-proirity" style="width: 20%;">
+                    <% for(let i = 0; i <= 5; i++) { %>
+                      <option value='<%= i %>'><%= i %></option>
+                    <% } %>  
+                </select>
+            </div>
+            <div id="todo-tag-box" class="todo-infos">
+                <span>태그: </span>
+                <span id="todo-tag-list">
+                    <span id="todo-tag-addarea">
+                        <textarea id= "todo-tag-textbox" style="width: 90%;"></textarea>
+                        <button id="addtag" class="addbtn">+</button>
+                    </span>
+                    <div class="count"><span id="tag-val-num">0</span>/50</div>
+                    <div id="taglist">
+                    </div>
+                </span>
+            </div>
+            <button id="savetodo"  class="defaultbutton" onclick="savetodo()" >일정 저장</button>
+        </div>
+    </div>
+    <h2>완료율: 0%</h2>
+    <div id="todolist">오늘 일정이 없습니다.</div>    
+</div>
+<script>
+    //modal
+    const addTodoBtn=document.getElementById('addTodoBtn');
+    const todoModal=document.querySelector('.modal');
+    const overlay=todoModal.querySelector(".modal__overlay");
+    const closeBtn=todoModal.querySelector(".close")
+    const openModal=()=>{
+        todoModal.classList.remove("hidden")
+    }
+    const closeModal=()=>{
+        todoModal.classList.add("hidden")
+    }
+    addTodoBtn.addEventListener("click",openModal)
+    closeBtn.addEventListener("click",closeModal)
+    
+    //add tag
+    const todo_tag_textbox=document.getElementById('todo-tag-textbox')
+    const addtag=document.getElementById('addtag')
+    const taglist=document.getElementById('taglist')
+    const tag_val_num=document.getElementById('tag-val-num')
+    let tags=[]
+
+    todo_tag_textbox.addEventListener("keyup",()=>{
+        console.log(todo_tag_textbox.value.length)
+        tag_val_num.innerHTML=todo_tag_textbox.value.length;
+        if (todo_tag_textbox.value.length > 50){
+            alert("태그는 최대 50자까지 입력 가능합니다.");
+            todo_tag_textbox.value=todo_tag_textbox.value.substring(0, 50)
+            tag_val_num.innerHTML=50;
+        }
+    })
+    addtag.addEventListener("click",()=>{
+        //add tag in taglist
+        if(todo_tag_textbox.value.length>0 && !tags.includes(todo_tag_textbox.value)){
+            let index=tags.push(todo_tag_textbox.value)
+            let tagItem=document.createElement("div")
+            tagItem.classList.add("item");
+            tagItem.style.backgroundColor='lightgray'
+            tagItem.innerHTML=`
+                <span class="delete-btn" onclick="deleteTag(this,'${todo_tag_textbox.value}')" style="cursor: pointer;">
+                    &times;
+                </span>
+                <span>${todo_tag_textbox.value}</span>
+            `;  
+            console.log("list tags after add: ",tags)
+            document.querySelector("#taglist").appendChild(tagItem);
+        }
+    })
+
+    function deleteTag(ref,tag){
+        let parent=ref.parentNode.parentNode
+        parent.removeChild(ref.parentNode)
+        let index=tags.indexOf(tag);
+        tags.splice(index,1);
+        console.log("list tags after splice: ",tags)
+    }
+
+    //종일 여부
+    const start_wholeday=document.getElementById('start-wholeday')
+    const start_wholeday_checkbox=document.getElementsByName('start-wholeday-checkbox')
+    const end_wholeday=document.getElementById('end-wholeday')
+    const end_wholeday_checkbox=document.getElementsByName('end-wholeday-checkbox')
+
+
+    start_wholeday_checkbox[0].addEventListener('click',()=>{
+        if(start_wholeday_checkbox[0].checked){
+            console.log('start checked')
+            start_wholeday.style.visibility = "hidden"
+        }else{
+            console.log('start not checked')
+            start_wholeday.style.visibility = "visible"
+        }
+    })
+
+    end_wholeday_checkbox[0].addEventListener('click',()=>{
+        if(end_wholeday_checkbox[0].checked){
+            console.log('end checked')
+            end_wholeday.style.visibility = "hidden"
+        }else{
+            console.log('end not checked')
+            end_wholeday.style.visibility = "visible"
+        }
+    })
+
+    //일정 저장
+    function savetodo(){
+
+        let title=document.getElementById('todo-title').value
+
+        if(title.length<1){
+            alert('일정 제목은 필수 입력 항목입니다.')
+            return
+        }
+        let content=document.getElementById('todo-content').value
+
+        let start=""
+        let startDate=new Date(0);
+        let startyear=document.getElementById('startyear')
+        startDate.setFullYear(startyear.value)
+        let startmonth=document.getElementById('startmonth')
+        startDate.setMonth(Number(startmonth.value)-1)
+        let startday=document.getElementById('startday')
+        startDate.setDate(startday.value)
+        start=startyear.value+'-'+('0'+startmonth.value).slice(-2)+'-'+('0'+startday.value).slice(-2)
+        console.log(start_wholeday_checkbox[0].checked)
+        if(!start_wholeday_checkbox[0].checked){
+            let startampm=document.getElementById('startampm')
+            let starthour=document.getElementById('starthour')
+            let startmin=document.getElementById('startmin')
+            start+='T'
+            if(startampm.value=='a'){
+                console.log('오전');
+                remove=starthour.value==12?12:0
+                start+=('0'+String(Number(starthour.value)-remove)).slice(-2)
+                startDate.setHours(starthour.value)
+            }
+            else{
+                console.log('오후');
+                add=starthour.value==12?0:12
+                start+=('0'+String(Number(starthour.value)+add)).slice(-2)
+                startDate.setHours(Number(starthour.value)+add)
+            }
+            start+=':'+('0'+startmin.value).slice(-2)+":00"
+            startDate.setMinutes(startmin.value)
+        }
+        console.log(startDate)
+        let currentTime=Date.now()
+        if(currentTime>startDate){
+            alert('현재 시간 이전에 일정을 등록할 수 없습니다.')
+            return
+        }
+
+        let end=""
+        let endDate=new Date(0);
+        let endyear=document.getElementById('endyear')
+        endDate.setFullYear(endyear.value)
+        let endmonth=document.getElementById('endmonth')
+        endDate.setMonth(Number(endmonth.value)-1)
+        let endday=document.getElementById('endday')
+        endDate.setDate(endday.value)
+        end=endyear.value+'-'+('0'+endmonth.value).slice(-2)+'-'+('0'+endday.value).slice(-2)
+
+        if(!end_wholeday_checkbox[0].checked){
+            let endampm=document.getElementById('endampm')
+            let endhour=document.getElementById('endhour')
+            let endmin=document.getElementById('endmin')
+            end+='T'
+            if(endampm.value=='a'){
+                console.log('오전');
+                remove=endhour.value==12?12:0
+                end+=('0'+String(Number(endhour.value)-remove)).slice(-2)
+                endDate.setHours(endhour.value)
+            }
+            else{
+                console.log('오후');
+                add=endhour.value==12?0:12
+                end+=('0'+String(Number(endhour.value)+add)).slice(-2)
+                endDate.setHours(Number(endhour.value)+add)
+            }
+            end+=':'+('0'+endmin.value).slice(-2)+":00"
+            endDate.setMinutes(endmin.value)
+        }
+        console.log(endDate)
+        if(startDate>endDate){
+            alert('일정 종료 시간은 일정 시작 시간보다 빨라야 합니다.')
+            return
+        }
+        let uploader=`<%- JSON.parse(userinfo)._id %>`;
+        let priority=document.getElementById('todo-proirity').value
+
+        let data = {
+            title: title,
+            content: content,
+            start: start,
+            end: end,
+            priority: priority,
+            tags: tags, 
+            uploader: uploader,
+            completed: 'false'
+        }
+        console.log(JSON.stringify(data));
+        fetch("/savetodo",{
+            method: "POST",
+            headers: {
+            "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data)
+        }).then((response) => console.log("response:"+response));
+        alert("일정을 저장하였습니다.");
+        console.log("list tags after save: ",tags)
+    }
+</script>
+

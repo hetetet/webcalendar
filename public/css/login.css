@@ -1,0 +1,15 @@
+#loginbox{
+    width: 40%;
+    height: 400px;
+    background-color: #eeeeee;
+    margin: 0 auto;
+    border-radius: 5px;
+    margin: 10% 30%;
+}
+
+.loginbtn{
+    width: 25%;
+    height: 40px;
+    margin: 0 auto;
+    padding: 10% 10%;
+}

@@ -1,0 +1,37 @@
+#dashheader{
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+#dashboard-title{
+    text-align: center;
+}
+
+#todocontainer{
+    display: grid;
+    margin: 3% 3%;
+	column-gap: 20px;
+	row-gap: 20px;
+}
+
+#todolist{
+    width: 90%;
+    padding: 5% 5%;
+    background-color: lightcyan;
+}
+
+.todo-infos{
+    display: grid;
+    grid-template-columns: 20% 70%;
+	column-gap: 5px;
+    padding: 10px 10px;
+    text-align: left;
+}
+
+#todo-tag-addarea{
+    display: grid;
+    grid-template-columns: 80% 20%;
+    text-align: left;   
+}
+
