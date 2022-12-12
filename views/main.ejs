@@ -1,16 +1,18 @@
-
   <span id="buttons">
     <button id="bgcolor" class="defaultbutton" onclick="location.href='/stats'">태그 통계</button>
     <button id="bgcolor"  class="defaultbutton" onclick="location.href='/dashboard'">대시보드</button>
   </span>
-  <h1 style="width: 100%; text-align: center">일정 관리</h1>
+  <h1 style="width: 100%; text-align: center" class="bold">일정 관리</h1>
   <div id="maincontainer">
     <div id="category">
       <span id="category_header">
-        <h2 style="width: 60%; text-align: left; margin-left: 5%;">카테고리</h2>
+        <h2 style="width: 60%; text-align: left; margin-left: 5%;" class="bold" >카테고리</h2>
         <button id="addcategory" class="addbtn" onclick="openModal()">+</button>
-      </span>  
-      <h3 style="width: 60%; text-align: left; margin-left: 5%;">생성한 일정</h3>  
+      </span> 
+      <span>
+        <h3 style="width: 60%; text-align: left; margin-left: 5%;">생성한 일정</h3>
+        <button id="bgcolor" class="defaultbutton" style="position: inherit; width: 50%;" onclick="getTodoList()">생성한 모든 일정 보기</button> 
+      </span> 
       <div id="created-category">        
       </div>  
       <h3 style="width: 60%; text-align: left; margin-left: 5%;">공유 받은 일정</h3>
@@ -23,7 +25,7 @@
     <div class="modal__overlay">
       <div id="modal_category" class="modal__content">
         <span class="modal__header">
-          <h1>카테고리 추가하기</h1>
+          <h1 class="bold">카테고리 추가하기</h1>
           <button class="close" onclick="closeModal()">X</button>
         </span>
         <div id="category-title-box" class="category-infos">
@@ -60,12 +62,28 @@
   <div class="submodal hidden">
     <div id="modal_users" class="modal__content">
       <span class="modal__header">
-        <h1>공유할 사용자 목록</h1>
+        <h1 class="bold">공유할 사용자 목록</h1>
         <button class="closesub" onclick="closesubModal()">X</button>
       </span>        
       <div id="user-list">
       </div>
       <button id="sharecategory" class="defaultbutton" style="margin-top: 5px;" onclick="saveuser()">공유하기</button>
+    </div>
+  </div>
+  <div class="todolist-modal hidden">
+    <div class="modal__overlay">
+      <div id="modal_todolist" class="modal__content"> 
+        <span class="modal__header">
+          <h1 class="bold">일정 목록</h1>
+          <button class="closesub" onclick="hidetodolist()">X</button>
+        </span>
+        <div id="todolist-list">
+        </div>       
+      </div>     
+    </div>
+  </div>
+  <div class="tooltip hidden">
+    <div id="name">
     </div>
   </div>
 
@@ -77,11 +95,17 @@
 **/
 let tags=[];
 let remove_tags=[];
+let shared_categories_tags=[];
+let shared_cat_arr=[];
+let can_search_share=false;
+let eventlist=[]
+let eventstrlist=[]
 
 const addTodoBtn=document.getElementById('addTodoBtn');
 const todoModal=document.querySelector('.modal');
 const overlay=todoModal.querySelector(".modal__overlay");
 const closeBtn=todoModal.querySelector(".close");
+const todolist_modal=document.querySelector('.todolist-modal')
 let user_idnames=new Set();
 
 const openModal=()=>{
@@ -114,6 +138,7 @@ const closeModal=()=>{
   * 카테고리에 태그 추가
   **/
   //add tag
+  let calendar
   const category_tag_textbox=document.getElementById('category-tag-textbox')
   const addtag=document.getElementById('addtag')
   const taglist=document.getElementById('taglist')
@@ -184,7 +209,7 @@ const closeModal=()=>{
     return res.json();                              
     })
     .then(data => {
-    console.log(data.data); //공유할 수 있는 사용자 목록(본인을 제외한 모든 사용자)
+    //console.log(data.data); //공유할 수 있는 사용자 목록(본인을 제외한 모든 사용자)
     let userlist=data.data
     console.log("userlist: ",userlist); 
     for(user in userlist){
@@ -250,8 +275,7 @@ const closeModal=()=>{
         }
         document.querySelector("#user-list").innerHTML='' //자식 노드 싹 다 비우기
         userModal.classList.add("hidden")
-      }
-    
+    }
       function deleteUserelem(ref){
       let parent=ref.parentNode.parentNode
       parent.removeChild(ref.parentNode)
@@ -302,59 +326,56 @@ const closeModal=()=>{
       fetchCreatedCat()
       closeModal()
     }
-    /**
-    *페이지가 로딩되면 달력을 렌더링하는 이벤트리스너 
-    */
-    document.addEventListener('DOMContentLoaded', function() {
-    let calendarEl = document.getElementById('calendar');
+/**
+*페이지가 로딩되면 달력을 렌더링하는 이벤트리스너 
+*/
+let calendarEl = document.getElementById('calendar');
+document.addEventListener('DOMContentLoaded', function() {
+  getTodoList()
+});
+
+/**
+ * 일정 목록 가져오는 함수
+ */ 
+function getTodoList(){
     //일정 목록 가져오기
     fetch("/todolist",{
-        method: "POST",
-        headers: {
+      method: "POST",
+      headers: {
         "Content-Type": "application/json",
-        },
-        body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+      },
+      body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
     }).then(res => {
-        if (!res.ok) {
+      if (!res.ok) {
         throw new Error("HTTP error " + res.status);
-        }
-        return res.json();                              
+      }
+      return res.json();                              
     })
     .then(data => {
-          //console.log(data.data)
-          let eventstrlist=data.data;
-          let eventlist=[];
-          for(let i=0;i<eventstrlist.length;i++){
-          //console.log(eventstrlist[i])
-          eventlist.push(JSON.parse(eventstrlist[i]))
-        }
-
-        let calendar = new FullCalendar.Calendar(calendarEl, {
-        timeZone: 'Asia/Seoul',
-        headerToolbar: {
-          left: 'prevYear,prev,next,nextYear',
-          center: 'title',
-          right: 'today'
-        },
-          editable: false,
-          selectable: true,
-          businessHours: true,
-          dayMaxEvents: true, // allow "more" link when too many events
-          events: eventlist
-        });
-        calendar.render();
+      //console.log(data.data)
+      eventstrlist=data.data
+      renderCalendar(eventstrlist)   
+      let allevents=calendar.getEvents()
+      console.log("getevents:", allevents)     
     })
     fetchCreatedCat()
     fetchSharedCat()
-});
+}
 
 let created_categories=document.querySelector('#created-category')
 let shared_categories=document.querySelector('#shared-category')
+/**
+ *일정 목록 모달을 숨기는 함수
+ */
+function hidetodolist(){
+  todolist_modal.classList.add("hidden")
+}
 
 /**
  *본인이 생성한 카테고리 목록을 가져오는 함수
  */
 function fetchCreatedCat(){
+  shared_cat_arr=[]
   fetch("/created-category",{
     method: "POST",
     headers: {
@@ -375,7 +396,7 @@ function fetchCreatedCat(){
         let created_cat=document.createElement('div')
         created_cat.classList.add('created-cat')
         created_cat.innerHTML=`
-          <span class="created-cat-title">${create_cat_arr[index].title}</span>
+          <span class="created-cat-title" onclick="showTodoWithCat('${create_cat_arr[index].title}')">${create_cat_arr[index].title}</span>
           <button id="edit-category" class="cat-btn" onclick="fetchCategory(this,'${create_cat_arr[index].title}')">수정</button>
           <button id="delete-category" class="cat-btn" onclick="deleteCategory(this,'${create_cat_arr[index].title}')">삭제</button>
           `
@@ -401,20 +422,30 @@ function fetchSharedCat(){
     return res.json();                              
     }).then(data => {
       // console.log("shared category: ", data)
-      let shared_cat_arr=data.data;
+      shared_cat_arr=data.data;
       shared_categories.innerHTML=''
+      shared_categories_tags=[]
       for(index in shared_cat_arr){
         console.log(shared_cat_arr[index].title)
+        shared_categories_tags.push(shared_cat_arr[index].tags)
         let shared_cat=document.createElement('div')
         shared_cat.classList.add('shared-cat')
         shared_cat.innerHTML=`
-          <span class="shared-cat-title">${shared_cat_arr[index].title}</span>
+          <span class="shared-cat-title" onclick="showTodoWithCat('${shared_cat_arr[index].title}')">${shared_cat_arr[index].title}</span>
           `
         shared_categories.appendChild(shared_cat);
+        for(subindex in shared_cat_arr[index].share_user){
+          let shared_user=document.createElement('div')
+          shared_user.innerHTML=`<span style="color:gray;">${shared_cat_arr[index].share_user}</span>`
+          shared_cat.appendChild(shared_user)
+        }
       }
+      console.log("shared_categories_tags: ",shared_categories_tags)
     })
 }
-
+/**
+ *생성한 카테고리 목록을 가져오는 함수
+ */
 function fetchCategory(ref,catname){
   console.log("edit "+catname)
   let parent=ref.parentNode
@@ -457,9 +488,6 @@ function fetchCategory(ref,catname){
         category_share.style.visibility = "visible"
         for(let index in users){
           user_idnames.add(JSON.stringify([index]))
-          // console.log("userid:",users[index]._id)
-          // console.log("userpfp:",users[index].pfpurl)
-          // console.log("username:",users[index].name)
           let user_element_category=document.createElement("div")
           user_element_category.innerHTML=`
             <span class="delete-btn" value='${users[index]}' onclick="deleteUserelem(this)" style="cursor: pointer;">
@@ -473,7 +501,9 @@ function fetchCategory(ref,catname){
       }
     })
 }
-
+/**
+ *카테고리 삭제 함수
+ */
 function deleteCategory(ref,catname){
   console.log("delete "+catname)
   let parent=ref.parentNode.parentNode
@@ -492,6 +522,176 @@ function deleteCategory(ref,catname){
       throw new Error("HTTP error " + res.status);
     }
   })
+}
+/**
+ *특정 카테고리에 속한 일정을 보여주는 함수
+ */
+function showTodoWithCat(category){
+  console.log("show todos only in category ",category)
+  fetch("/show-certain-cat",{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        "title":category,
+        "_id": '<%-JSON.parse(userinfo)._id %>'
+      })
+    }).then(res => {
+      if (!res.ok) {
+        throw new Error("HTTP error " + res.status);
+      }
+      return res.json();                              
+    }).then(data => {
+      console.log(data)
+      eventstrlist=data.data
+      renderCalendar(eventstrlist)
+      let allevents=calendar.getEvents()
+      console.log("getevents:", allevents)
+    })
+    
+/**
+ *달력 날짜 클릭하면 그 날짜에 일정들 가져오기
+ */
+let daygrids=document.getElementsByClassName('fc-daygrid-day')
+for(let i=0;i<daygrids.length;i++){
+  daygrids[i].addEventListener('click',(event)=>{
+      console.log(event.target)
+    })
+  }
+}
+/**
+ * 이벤트를 받아 달력을 렌더링하는 함수
+ */
+function renderCalendar(eventstrparam){
+    eventlist=[];
+    for(let i=0;i<eventstrparam.length;i++){
+      eventlist.push(JSON.parse(eventstrparam[i]))
+      if(eventlist[i].allday==true){
+        eventlist[i].start=eventlist[i].start.split('T')[0] //allday가 true면 뒤에 시간은 표시 안되게
+        let edited_endday=new Date(eventlist[i].end) //fullcalendar의 allday가 true일 경우 일정의 마지막 날이 표시되지 않는 버그 교정
+        edited_endday.setDate(edited_endday.getDate()+1) 
+        edited_endday=edited_endday.toISOString().split('T')[0]
+        console.log("after editing: ",eventlist[i].start,edited_endday)
+        eventlist[i].end=edited_endday
+      }
+    }
+    console.log('gonna render this events: ',eventlist)
+    calendar = new FullCalendar.Calendar(calendarEl, {
+    timeZone: 'Asia/Seoul',
+    headerToolbar: {
+      left: 'prevYear,prev,next,nextYear',
+      center: 'title',
+      right: 'today'
+    },
+      editable: false,
+      selectable: true,
+      businessHours: true,
+      dayMaxEvents: true, // allow "more" link when too many events
+      events: eventlist,
+      dateClick: function(info) {
+        
+        let dayevents=document.getElementsByClassName('fc-daygrid-event')
+        let showevent=[]
+        let startpoint=new Date(info.dateStr)
+        let endpoint=new Date(info.dateStr)
+
+        startpoint=startpoint.toISOString().split('T')[0]
+        endpoint.setDate(endpoint.getDate()+1) //끝점은 시작점보다 정확히 하루, 즉 24시간 후
+        endpoint=endpoint.toISOString().split('T')[0]
+        console.log("startpoint:", startpoint, "endpoint: ",endpoint)        
+        console.log("eventstrlist: ", eventstrlist);
+        todolist_modal.classList.remove("hidden")
+        
+        let todolist_list=document.querySelector("#todolist-list")
+        todolist_list.innerHTML="" //일정 목록 모달 내 일정 목록 초기화
+        for(index in eventstrlist){
+          let event=JSON.parse(eventstrlist[index])
+          let evt_start=String(event.start)
+          let evt_end=String(event.end)
+          //console.log("evt_start: ",evt_start)
+          //console.log("evt_end: ",evt_end)
+          if(event.allday){
+            evt_start=evt_start.split('T')[0]
+            //console.log("allday true, evt_Start: ",evt_start)
+          }else{
+            evt_start=evt_start.slice(0,-8)
+            //console.log("allday false, evt_Start: ",evt_start)
+          }
+
+          if(event.allday){
+            evt_end=evt_end.split('T')[0]
+            //console.log("allday true, evt_end: ",evt_end)
+          }else{
+            evt_end=evt_end.slice(0,-8)
+            //console.log("allday false, evt_end: ",evt_end)
+          }
+
+          evt_start=evt_start
+          evt_end=evt_end
+          
+          if((event.allday && evt_start<=startpoint && evt_end>=startpoint) 
+          || (!event.allday && evt_start<endpoint && evt_end>=startpoint)){
+            console.log("오늘의 일정: ",event)
+            let start_day=event.start.split('T')[0].split('-')            
+            let end_day=event.end.split('T')[0].split('-')
+            let start_time=""
+            let end_time=""
+            if(!event.allday){
+              start_time=event.start.split('T')[1].split(':')
+              end_time=event.end.split('T')[1].split(':')
+            }
+
+            let start_date_str=start_day[0]+"년 "+String(Number(start_day[1]))+"월 "+String(Number(start_day[2]))+"일 "
+            let end_date_str=end_day[0]+"년 "+String(Number(end_day[1]))+"월 "+String(Number(end_day[2]))+"일 "
+            
+            if(!event.allday){
+              let startminstr
+              let endminstr
+
+              if(Number(start_time[0])==0)
+                startminstr="오전 12시 "
+              else if(Number(start_time[0])<12)
+                startminstr="오전 "+String(Number(start_time[0]))+"시 "
+              else if(Number(start_time[0])==12)
+                startminstr="오후 12시 "
+              else
+                startminstr="오후 "+String(Number(start_time[0]-12))+"시 "
+
+              if(Number(end_time[0])==0)
+                endminstr="오전 12시 "
+              else if(Number(end_time[0])<12)
+                endminstr="오전 "+String(Number(end_time[0]))+"시 "
+              else if(Number(end_time[0])==12)
+                endminstr="오후 12시 "
+              else
+                endminstr="오후 "+String(Number(end_time[0]-12))+"시 "   
+              
+              start_date_str+=startminstr+String(Number(start_time[1]))+" 분"
+              end_date_str+=endminstr+String(Number(end_time[1]))+" 분"
+            }
+            console.log(start_date_str,end_date_str)
+            let todoItem=document.createElement("div")
+            todoItem.classList.add("todo-element");
+            todoItem.innerHTML=`<div class="todo-element">
+              <div class="todo-title" style="font-size: 25px;">
+                ${event.title}
+              </div>
+              <span class="todo-start" style="font-size: 18px;">
+                ${start_date_str}
+              </span> ~ 
+              <span class="todo-start" style="font-size: 18px;">
+                ${end_date_str}
+              </span>
+            </div>`
+            todolist_list.appendChild(todoItem);
+          }          
+        }
+        if(todolist_list.innerHTML=="")
+          todolist_list.innerHTML="해당 일자에는 일정이 없습니다."
+      }
+    });
+    calendar.render();
 }
 </script>
 

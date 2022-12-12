@@ -1,15 +1,14 @@
 <link href='/css/dashboard.css' rel='stylesheet' />
-<h1 style="width: 100%; text-align: center">대시보드</h1>
 <span id="dashheader">
     <button id="bgcolor"  class="defaultbutton" onclick="location.href='/main'" >홈으로</button>
-    <button id="addTodoBtn"  class="defaultbutton" >일정 추가</button>
+    <button id="addTodoBtn"  class="defaultbutton" style="margin-right: 10px;">일정 추가</button>
 </span>
 <div id="todocontainer">
     <div class="modal hidden">
         <div class="modal__overlay"></div>
         <div class="modal__content">
             <span class="modal__header">
-                <h1>일정 추가하기</h1>
+                <h1 class="bold">일정 추가하기</h1>
                 <button class="close">X</button>
             </span>
             <div id="todo-title-box" class="todo-infos">
@@ -19,11 +18,14 @@
             <div id="todo-content-box" class="todo-infos">
                 <span>내용: </span>
                 <textarea id="todo-content"></textarea>
-            </div>            
+            </div>   
+            <div id="todo-content-box" class="todo-infos">
+                <span>종일: </span>
+                <label><input type="checkbox" name="allday-checkbox" checked="true"></label>
+            </div>           
             <div id="todo-start-box" class="todo-infos">
                 <div>
                     <div>시작일: </div>
-                    <label><input type="checkbox" name="start-wholeday-checkbox" checked="true">종일</label>
                 </div>
                 <span>
                     <select id="startyear">
@@ -44,7 +46,7 @@
                           <option value='<%= i %>'><%= i %></option>
                         <% } %>
                     </select>일
-                    <div id="start-wholeday" style="visibility: hidden;">
+                    <div id="start-allday" style="visibility: hidden;">
                         <select id="startampm">
                             <option value="a">am</option>
                             <option value="p">pm</option>
@@ -67,7 +69,6 @@
             <div id="todo-end-box" class="todo-infos">
                 <div>
                     <div>종료일: </div>
-                    <label><input type="checkbox" name="end-wholeday-checkbox" checked="true"> 종일</label>
                 </div>
                 <span>
                     
@@ -88,7 +89,7 @@
                           <option value='<%= i %>'><%= i %></option>
                         <% } %>
                     </select>일
-                    <div id="end-wholeday" style="visibility: hidden;">
+                    <div id="end-allday" style="visibility: hidden;">
                         <select id="endampm">
                             <option value="a">am</option>
                             <option value="p">pm</option>
@@ -128,13 +129,149 @@
                     </div>
                 </span>
             </div>
-            <button id="savetodo"  class="defaultbutton" onclick="savetodo()" >일정 저장</button>
+            <button id="savetodo"  class="defaultbutton" onclick="savetodo()">일정 저장</button>
         </div>
     </div>
-    <h2>완료율: 0%</h2>
-    <div id="todolist">오늘 일정이 없습니다.</div>    
+    <h1 style="width: 100%; text-align: center;" class="bold">대시보드</h1>
+    <h2 id="complete-rate">완료율: 0%</h2>
+    <div id="todolist"></div>    
 </div>
 <script>
+let eventnum=0;
+let completednum=0;
+let todaytodolist=document.querySelector("#todolist")
+let complete_rate=document.querySelector('#complete-rate')
+
+document.addEventListener('DOMContentLoaded', function() {
+let today_range=new Date()
+
+today_range=today_range.toISOString().split('T')[0]
+console.log("today_range: ",today_range)
+fetch("/getdayevent",{
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({"data":`<%- JSON.parse(userinfo)._id %>`})
+    }).then(res => {
+    if (!res.ok) {
+        throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    }).then(data=>{
+        console.log(data.data)
+
+        let dayevents=data.data
+        let startpoint=new Date()
+        let endpoint=new Date()
+        startpoint.setHours(0,0,0,0)
+        endpoint.setHours(0,0,0,0)
+        endpoint.setDate(endpoint.getDate()+1) //끝점은 시작점보다 정확히 하루, 즉 24시간 후
+        console.log("startpoint: ", startpoint, "endpoint: ", endpoint)
+        
+        todaytodolist.innerHTML=''
+        for(let index=0;index<dayevents.length;index++){
+            let event=JSON.parse(dayevents[index])
+            //console.log("event.start: ",event.start, "event.end: ",event.end)
+            let evt_start=new Date(event.start)           
+            let evt_end=new Date(event.end)
+            if(event.allday){
+                evt_start.setTime(evt_start.getTime() - 9 * 60 * 60 * 1000)
+                evt_end.setTime(evt_end.getTime() - 9 * 60 * 60 * 1000)
+            }           
+            
+            console.log("evt_start: ",evt_start, "evt_end: ",evt_end)
+            if((event.allday && evt_start<=startpoint && evt_end>=startpoint) 
+            || (!event.allday && evt_start<endpoint && evt_end>=startpoint)){
+                console.log("오늘 일정: ", event.title, "일정 id:",event._id)
+                eventnum++;
+                let todayTodoItem=document.createElement('div')
+                todayTodoItem.classList.add('todaytodo')
+                let todocheckbox
+                if(event.completed){
+                    todocheckbox=`<input type="checkbox" name="todo-completed" checked="true" onclick="checkTodayTodo(this,'${event._id}')">`
+                    completednum++;
+                }else{
+                    todocheckbox=`<input type="checkbox" name="todo-completed" onclick="checkTodayTodo(this,'${event._id}')">`
+                }
+                let todaytodo_title=event.completed?`<span class="todaytodo-title bold del">`:`<span class="todaytodo-title bold">`
+                todayTodoItem.innerHTML=                  
+                    todaytodo_title+
+                        todocheckbox+
+                        `${event.title}
+                    </span>
+                    <div class="todaytodo-time">${timeformat(event.start)} ~ ${timeformat(event.end)}</div>
+                    <div class="todaytodo-content">${event.content}</div>
+                    `
+                todaytodolist.appendChild(todayTodoItem)
+            }
+        }
+        complete_rate.innerHTML='완료율:'+String(completednum/eventnum*100)+'%'
+        if(eventnum==0)
+            todaytodolist.innerHTML='오늘 일정이 없습니다.'        
+    })  
+}); 
+/**
+ *선택한 일정 완료 및 미완료 표시
+ */ 
+function checkTodayTodo(ref,_id){
+    console.log(_id)
+    console.log(ref.checked)
+    if(ref.checked){
+        completednum++;
+        ref.parentNode.classList.add('del')
+    }
+    else{
+        completednum--;
+        ref.parentNode.classList.remove('del')
+    }
+    complete_rate.innerHTML='완료율:'+String(completednum/eventnum*100)+'%'
+    fetch("/checktodo",{
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+        "_id":_id,
+        "completed":ref.checked
+    })
+    }).then(res => {
+    if (!res.ok) {
+        throw new Error("HTTP error " + res.status);
+    }
+    return res.json();                              
+    }).then(data=>{
+        console.log(data.data)
+    })      
+}
+
+/**
+ *년,월,일,시,분,초로 시간 포맷 변경 
+ */ 
+function timeformat(datestr){
+    if(datestr.includes('T')){ //allday:false
+        let returnstr=""
+        datestrs=datestr.split('T')
+        datestrs[0]=datestrs[0].split('-')
+        datestrs[1]=datestrs[1].split(':')
+        returnstr+=datestrs[0][0]+"년 "+datestrs[0][1]+"월 "+datestrs[0][2]+"일 "
+        if(Number(datestrs[1][0])==0){
+            returnstr+='오전 12시 '
+        }else if(Number(datestrs[1][0])<12){
+            returnstr+='오전 '+datestrs[1][0]+'시 '
+        }else if(Number(datestrs[1][0])==12){
+            returnstr+='오후 12시 '
+        }else{
+            returnstr+='오후 '+String(Number(datestrs[1][0]-12))+'시 '
+        }
+        returnstr+=datestrs[1][1]+"분"
+        return returnstr
+    }else{ //allday:true
+        datestrs=datestr.split('-')
+        return datestrs[0]+"년 "+datestrs[1]+"월 "+datestrs[2]+"일"
+    }
+}
+        
     //modal
     const addTodoBtn=document.getElementById('addTodoBtn');
     const todoModal=document.querySelector('.modal');
@@ -155,6 +292,7 @@
     const taglist=document.getElementById('taglist')
     const tag_val_num=document.getElementById('tag-val-num')
     let tags=[]
+    let remove_tags=[];
 
     todo_tag_textbox.addEventListener("keyup",()=>{
         console.log(todo_tag_textbox.value.length)
@@ -192,29 +330,22 @@
     }
 
     //종일 여부
-    const start_wholeday=document.getElementById('start-wholeday')
-    const start_wholeday_checkbox=document.getElementsByName('start-wholeday-checkbox')
-    const end_wholeday=document.getElementById('end-wholeday')
-    const end_wholeday_checkbox=document.getElementsByName('end-wholeday-checkbox')
+    const start_allday=document.getElementById('start-allday')
+    const start_allday_checkbox=document.getElementsByName('start-allday-checkbox')
+    const end_allday=document.getElementById('end-allday')
+    const end_allday_checkbox=document.getElementsByName('end-allday-checkbox')
 
+    const allday_checkbox=document.getElementsByName('allday-checkbox')
 
-    start_wholeday_checkbox[0].addEventListener('click',()=>{
-        if(start_wholeday_checkbox[0].checked){
-            console.log('start checked')
-            start_wholeday.style.visibility = "hidden"
+    allday_checkbox[0].addEventListener('click',()=>{
+        if(allday_checkbox[0].checked){
+            console.log('wholday false')
+            start_allday.style.visibility = "hidden"
+            end_allday.style.visibility = "hidden"
         }else{
-            console.log('start not checked')
-            start_wholeday.style.visibility = "visible"
-        }
-    })
-
-    end_wholeday_checkbox[0].addEventListener('click',()=>{
-        if(end_wholeday_checkbox[0].checked){
-            console.log('end checked')
-            end_wholeday.style.visibility = "hidden"
-        }else{
-            console.log('end not checked')
-            end_wholeday.style.visibility = "visible"
+            console.log('wholday true')
+            start_allday.style.visibility = "visible"
+            end_allday.style.visibility = "visible"
         }
     })
 
@@ -231,15 +362,17 @@
 
         let start=""
         let startDate=new Date(0);
+
         let startyear=document.getElementById('startyear')
         startDate.setFullYear(startyear.value)
+        console.log("startdate just after set year: ", startDate)
         let startmonth=document.getElementById('startmonth')
         startDate.setMonth(Number(startmonth.value)-1)
         let startday=document.getElementById('startday')
         startDate.setDate(startday.value)
+        
         start=startyear.value+'-'+('0'+startmonth.value).slice(-2)+'-'+('0'+startday.value).slice(-2)
-        console.log(start_wholeday_checkbox[0].checked)
-        if(!start_wholeday_checkbox[0].checked){
+        if(!allday_checkbox[0].checked){
             let startampm=document.getElementById('startampm')
             let starthour=document.getElementById('starthour')
             let startmin=document.getElementById('startmin')
@@ -261,11 +394,10 @@
         }
         console.log(startDate)
         let currentTime=Date.now()
-        if(currentTime>startDate){
+        if((!allday_checkbox[0].checked && currentTime>startDate) || (allday_checkbox[0].checked && new Date().setHours(0,0,0,0)>=startDate)){
             alert('현재 시간 이전에 일정을 등록할 수 없습니다.')
             return
         }
-
         let end=""
         let endDate=new Date(0);
         let endyear=document.getElementById('endyear')
@@ -276,7 +408,7 @@
         endDate.setDate(endday.value)
         end=endyear.value+'-'+('0'+endmonth.value).slice(-2)+'-'+('0'+endday.value).slice(-2)
 
-        if(!end_wholeday_checkbox[0].checked){
+        if(!allday_checkbox[0].checked){
             let endampm=document.getElementById('endampm')
             let endhour=document.getElementById('endhour')
             let endmin=document.getElementById('endmin')
@@ -296,6 +428,7 @@
             end+=':'+('0'+endmin.value).slice(-2)+":00"
             endDate.setMinutes(endmin.value)
         }
+
         console.log(endDate)
         if(startDate>endDate){
             alert('일정 종료 시간은 일정 시작 시간보다 빨라야 합니다.')
@@ -310,7 +443,9 @@
             start: start,
             end: end,
             priority: priority,
+            allday: allday_checkbox[0].checked,
             tags: tags, 
+            removetags: remove_tags,
             uploader: uploader,
             completed: 'false'
         }
@@ -322,7 +457,7 @@
             },
             body: JSON.stringify(data)
         }).then((response) => console.log("response:"+response));
-        alert("일정을 저장하였습니다.");
+        alert("일정을 저장하였습니다. savetodo: ",data);
         console.log("list tags after save: ",tags)
     }
 </script>

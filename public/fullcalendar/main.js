@@ -535,13 +535,13 @@ var FullCalendar = (function (exports) {
     }
     // Diffing Whole Units
     function diffWholeWeeks(m0, m1) {
-        var d = diffWholeDays(m0, m1);
+        var d = diffalldays(m0, m1);
         if (d !== null && d % 7 === 0) {
             return d / 7;
         }
         return null;
     }
-    function diffWholeDays(m0, m1) {
+    function diffalldays(m0, m1) {
         if (timeAsMs(m0) === timeAsMs(m1)) {
             return Math.round(diffDays(m0, m1));
         }
@@ -4006,7 +4006,7 @@ var FullCalendar = (function (exports) {
             if (n !== null) {
                 return { unit: 'week', value: n };
             }
-            n = diffWholeDays(m0, m1);
+            n = diffalldays(m0, m1);
             if (n !== null) {
                 return { unit: 'day', value: n };
             }
@@ -4040,7 +4040,7 @@ var FullCalendar = (function (exports) {
                 }
             }
             if (d.days) {
-                diff = diffWholeDays(m0, m1);
+                diff = diffalldays(m0, m1);
                 if (diff !== null) {
                     return diff / asRoughDays(d);
                 }
@@ -7074,7 +7074,7 @@ var FullCalendar = (function (exports) {
         if (currentRangeUnit === 'month') {
             return { year: 'numeric', month: 'long' }; // like "September 2014"
         }
-        var days = diffWholeDays(dateProfile.currentRange.start, dateProfile.currentRange.end);
+        var days = diffalldays(dateProfile.currentRange.start, dateProfile.currentRange.end);
         if (days !== null && days > 1) {
             // multi-day range. shorter, like "Sep 9 - 10 2014"
             return { year: 'numeric', month: 'short', day: 'numeric' };
@@ -14897,7 +14897,7 @@ var FullCalendar = (function (exports) {
     exports.diffDays = diffDays;
     exports.diffPoints = diffPoints;
     exports.diffWeeks = diffWeeks;
-    exports.diffWholeDays = diffWholeDays;
+    exports.diffalldays = diffalldays;
     exports.diffWholeWeeks = diffWholeWeeks;
     exports.disableCursor = disableCursor;
     exports.elementClosest = elementClosest;

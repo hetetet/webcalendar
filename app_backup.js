@@ -38,7 +38,7 @@ app.get('/', (req,res)=>{
    header=res.writeHead(200, {'Content-Type': 'text/html;charset=utf-8'});
    kakao_api_url = `https://kauth.kakao.com/oauth/authorize?client_id=${kakao_client_id}&redirect_uri=${kakao_redirectURI}&response_type=code&scope=profile,account_email`;
 
-   naverbtn="<a href='"+ naver_api_url + "'><img height='50' src='http://static.nid.naver.com/oauth/small_g_in.PNG'/></a>"
+   naverbtn="<a href='"+ naver_api_url + "'>네이버 로그인</a>"
    kakaobtn="<a href='"+ kakao_api_url + "'></a>"
    res.render('login', {layout:'./layouts/loginlayout', naverbtn:naverbtn})
 })

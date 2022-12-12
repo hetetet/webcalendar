@@ -15,6 +15,9 @@ const todoSchema=new Schema({
     end:{
         type: String,
     },
+    allday:{
+        type: Boolean,
+    },
     priority:{
         type: Number,
     },  

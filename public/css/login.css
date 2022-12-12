@@ -1,15 +1,38 @@
+@font-face {
+    font-family: 'nanumsquare';
+    src: url('/font/NanumSquareRoundB.ttf') format('truetype');
+}
+
+body{
+    font-family: 'nanumsquare';
+}
+
 #loginbox{
     width: 40%;
-    height: 400px;
+    height: 80%;
     background-color: #eeeeee;
-    margin: 0 auto;
     border-radius: 5px;
-    margin: 10% 30%;
+    margin: 10% auto;
+    padding: 3% 3%;
+    align-items: center;
+    display: flex;
+    flex-direction: column;
 }
 
 .loginbtn{
-    width: 25%;
-    height: 40px;
-    margin: 0 auto;
-    padding: 10% 10%;
+    display: block;
+    position: inherit;
+    margin: auto auto;
+    align-items: center;
+    padding: 5px 5px;
+    width: 50%;
+    margin: 5% 10%;
+}
+
+img{
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    margin: auto auto;
+    cursor: pointer;
 }

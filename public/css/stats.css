@@ -1,0 +1,48 @@
+#todos-num{
+    position: inherit;
+    width:80%;
+    margin: 10px auto;
+    font-size: 25px;    
+}
+
+#statsfield{
+    position: inherit;
+    width:80%;
+    margin: 10px auto;
+    border-radius: 10px;
+    background-color: ghostwhite;
+    align-items: cent;
+}
+
+.todoitem{
+    padding: 15px 10px;
+}
+
+.todoitem-name{
+    display: grid;
+    grid-template-columns: 20% 20% 60%;
+    width: 15%; 
+    font-size: 30px;
+}
+
+.todoitem-rate{
+    width: 15%; 
+    font-size: 20px; 
+    color: gray;
+    margin-right: 30px;
+}
+
+.todoitem-bar{
+    display:inline-block;
+    width: 70%; 
+    height: 20px; 
+}
+
+.todoitem-bar-rate{
+    display: inline-block; 
+    height: 25px; 
+    border-radius: 5px;
+    background-color: royalblue;
+}
+
+

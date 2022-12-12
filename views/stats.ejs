@@ -1,2 +1,52 @@
-<button id="bgcolor" onclick="location.href='/main'">홈으로</button>
-<h1>태그 통계를 보여주는 공간입니다.</h1>
+<link href='/css/stats.css' rel='stylesheet' />
+<button id="bgcolor" class="defaultbutton" onclick="location.href='/main'">홈으로</button>
+<h1 style="width: 100%; text-align: center" class="bold">태그 통계</h1>
+<div id="todos-num">총 일정 개수:</div>
+<div id="statsfield">
+    <div class="todoitem">
+        <span class="todoitem-name">태그 이름</span>
+        <span class="todoitem-rate">90%(5)</span>
+        <span class="todoitem-bar">
+            <span class="todoitem-bar-rate"></span>
+        </span>
+    </div>
+</div>
+<script>
+    fetch("/taglist",{
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        },
+        body: JSON.stringify({"data":'<%-JSON.parse(userinfo)._id %>'})
+    }).then(res => {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+      return res.json();                              
+    })
+    .then(data => {
+      console.log(data)
+      document.querySelector("#todos-num").innerHTML="총 일정 개수: "+String(data.todonum)
+      let tagsum=0
+      for(index in data.taglist){
+        tagsum+=data.taglist[index].used
+      }
+      console.log("tagsum: ",tagsum)
+      let statsfield=document.querySelector('#statsfield')
+      statsfield.innerHTML=`` //innerHTML 초기화
+      for(index in data.taglist){
+        let tag_stat_item=document.createElement('div')
+        tag_stat_item.classList.add("todoitem");
+        let tagrate=(data.taglist[index].used/tagsum*100).toFixed(1)
+        tag_stat_item.innerHTML=`
+            <div class="todoitem">
+                <span class="todoitem-name">${data.taglist[index].name}</span>
+                <span class="todoitem-rate">${tagrate}%(${data.taglist[index].used})</span>
+                <span class="todoitem-bar">
+                    <span class="todoitem-bar-rate" style="width:${tagrate}%;"></span>
+                </span>
+            </div>`
+        statsfield.appendChild(tag_stat_item);
+      }
+    })
+</script>

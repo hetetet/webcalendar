@@ -41,6 +41,7 @@ app.use('/script',express.static(path.join(__dirname+'/public/script')))
 app.use('/image',express.static(path.join(__dirname+'/public/image')))
 app.use('/fullcalendar',express.static(path.join(__dirname+'/public/fullcalendar')))
 app.use('/models',express.static(path.join(__dirname+'/public/models')))
+app.use('/font',express.static(path.join(__dirname+'/public/font')))
 
 app.use(expressLayouts)
 app.set('view engine', 'ejs')
@@ -64,9 +65,11 @@ app.use(session({
 }));
 
 app.get('/', (req,res)=>{
-  req.session.destroy()
+  console.log("on root with session ",req.session)
   naver_api_url = 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=' + naver_client_id + '&redirect_uri=' + naver_redirectURI + '&state=' + naver_state;
-  naverbtn="<a href='"+ naver_api_url + "'><img height='50' src='http://static.nid.naver.com/oauth/small_g_in.PNG'/></a>"
+  if(req.session.loginby=='naver')
+    naver_api_url='/main'
+  naverbtn="<a href='"+ naver_api_url + "'><img height='50' src='/image/naver_login_btn.png'/></a>"
   res.render('login', {layout:'./layouts/loginlayout', naverbtn:naverbtn})
 })
 
@@ -188,7 +191,7 @@ app.get('/auth/kakao/',async(req,res)=>{
       name:user.data.properties.nickname, 
       pfpurl:user.data.properties.profile_image,
       bg_color:"lightblue", 
-      share_category:[],  
+      share_category:[],   
     }
     req.session.user=userdata; //세션 저장
     req.session.loginby='kakao'
@@ -199,10 +202,9 @@ app.get('/auth/kakao/',async(req,res)=>{
 });
 
 app.get('/main',(req,res)=>{
-  if(!req.session){
-    console.log('no session so redirect to /');
+  if(!req.session.user){
+    console.log('no user session so redirect to /');
     res.redirect('/')
-
   }
   else{
     console.log("req.session.user.id:", req.session.user._id)
@@ -251,19 +253,21 @@ app.post('/savetodo',(req,res)=>{
   console.log(req.body)
   updateTag(req.body.tags,[])
 
-  let todo=new ToDo();
-  todo.title=req.body.title
-  todo.content=req.body.content
-  todo.start=req.body.start
-  todo.end=req.body.end
-  todo.priority=Number(req.body.priority)
-  todo.uploader=req.body.uploader
-  todo.tags=req.body.tags
-  todo.save((err,doc)=>{
-    if(err){
-      console.log("error:"+err)
-    }
-  });  
+  ToDo.updateOne({title:req.body.title, uploader:req.body.uploader},
+    {$set:{
+        title:req.body.title, 
+        content:req.body.content, 
+        start:req.body.start,
+        end:req.body.end,
+        allday:req.body.allday,
+        priority:Number(req.body.priority),
+        uploader:req.body.uploader,
+        tags:req.body.tags, share_user:req.body.share_user, 
+        completed:false
+      }},{upsert:true},(err,doc)=>{
+    console.log("req.body.removetags:", req.body.removetags)
+    updateTag(req.body.tags, req.body.removetags)
+  })
 })
 
 /**
@@ -298,7 +302,7 @@ app.post('/readcategory',(req,res)=>{
     console.log("category.share_user:", category.share_user)
     UserInfo.find({_id:{$in:category.share_user}},(err,users)=>{
       console.log("share_user:", users)
-      res.send({
+      return res.send({
         "data":category,
         "users":users
       })  
@@ -306,6 +310,9 @@ app.post('/readcategory',(req,res)=>{
   })  
 })
 
+/**
+ * 카테고리 삭제하기
+ */
 app.post('/deletecategory',(req,res)=>{
   console.log("title:", req.body.title)  
   Category.findOne({title:req.body.title},(err,category)=>{
@@ -317,36 +324,109 @@ app.post('/deletecategory',(req,res)=>{
       }
     })
   })  
-  // updateTag([],[],()=>{
-  //   Category.findOneAndDelete({title:req.body.title},(err,category)=>{
-  //     if(err)
-  //       console.log('effor on deleting category')
-  //   })  
-  // })
 })
 
 /**
  * 할 일 목록 클라이언트로 넘기기
  */
-app.post('/todolist',(req,res)=>{
+app.post('/todolist',async(req,res)=>{
   let todolist=[];
   console.log(req.body.data)
-  ToDo.find({uploader:req.body.data},(err,todos)=>{
+  try{
+    let todos=await ToDo.find({uploader:req.body.data})
     colorlist=['#dc1403','#dda703','#dddd03','#03dd03','#006400','#0370dd'] //우선순위별 색깔
-    todos.forEach((todo)=>{
-      console.log(todo.title)
+    for(let index=0;index<todos.length;index++){
       let todoobj={
-        title:todo.title,
-        color:colorlist[todo.priority],
-        start:todo.start,
-        end:todo.end
+        _id:todos[index]._id,
+        allday:todos[index].allday,
+        title:todos[index].title,
+        color:colorlist[todos[index].priority],
+        start:todos[index].start,
+        end:todos[index].end
       }          
-      todolist.push(JSON.stringify(todoobj))
-    })
-    console.log(todolist)
-    res.send({"data":todolist})    
-  })
+      todolist.push(JSON.stringify(todoobj))   
+    }
+    let categories=await Category.find({share_user:req.body.data}) //유저가 공유받은 카테고리 목록
+    let share_todos=await ToDo.find({uploader:{$ne:req.body.data}}) //유저가 만들지 않은 일정 목록
+    for(let i=0;i<categories.length;i++){
+      for(let j=0;j<share_todos.length;j++){
+        if(isSubArray(share_todos[j].tags,categories[i].tags)){
+          let todoobj={
+            _id:share_todos[j]._id,
+            allday:share_todos[j].allday,
+            title:share_todos[j].title,
+            color:colorlist[share_todos[j].priority],
+            start:share_todos[j].start,
+            end:share_todos[j].end
+          }          
+          todolist.push(JSON.stringify(todoobj))           
+        }
+      }
+    }
+
+    return res.send({"data":todolist})
+  }catch(e){
+    console.log(e);
+  }
 })
+
+/**
+ * 오늘 일정 클라이언트로 넘기기
+ */
+app.post('/getdayevent',async(req,res)=>{
+  let todolist=[];
+  console.log(req.body.data)
+  try{
+    let todos=await ToDo.find({uploader:req.body.data})
+    for(let index=0;index<todos.length;index++){
+      let todoobj={
+        _id:todos[index]._id,
+        allday:todos[index].allday,
+        title:todos[index].title,
+        start:todos[index].start,
+        end:todos[index].end,
+        content:todos[index].content,
+        completed:todos[index].completed
+      }          
+      todolist.push(JSON.stringify(todoobj))   
+    }
+    let categories=await Category.find({share_user:req.body.data}) //유저가 공유받은 카테고리 목록
+    let share_todos=await ToDo.find({uploader:{$ne:req.body.data}}) //유저가 만들지 않은 일정 목록
+    for(let i=0;i<categories.length;i++){
+      for(let j=0;j<share_todos.length;j++){
+        if(isSubArray(share_todos[j].tags,categories[i].tags)){
+          let todoobj={
+            _id:share_todos[j]._id,
+            allday:share_todos[j].allday,
+            title:share_todos[j].title,
+            start:share_todos[j].start,
+            end:share_todos[j].end,
+            content:todos[j].content,
+            completed:todos[j].completed
+          }          
+          todolist.push(JSON.stringify(todoobj))           
+        }
+      }
+    }
+
+    return res.send({"data":todolist})
+  }catch(e){
+    console.log(e);
+  }
+})
+
+/** 
+ * @param {Array} haystack 
+ * @param {Array} needle 
+ * needle이 haystack의 subarray인지 판별하는 함수
+ */
+function isSubArray(haystack,needle){
+  for(let i=0;i<needle.length;i++){
+    if(!haystack.includes(needle[i]))
+      return false;
+  }
+  return true;
+}
 
 /**
  * 사용자 목록 클라이언트로 넘기기
@@ -364,7 +444,7 @@ app.post('/todolist',(req,res)=>{
       userlist.push(JSON.stringify(userobj))
     })
     console.log(userlist)
-    res.send({"data":userlist})    
+    return res.send({"data":userlist})    
   })
 })
 
@@ -375,30 +455,48 @@ app.post('/created-category',(req,res)=>{
   let category_list=[]
   console.log(req.body.data)
     Category.find({uploader:req.body.data},(err,categories)=>{ //본인이 업로드한 카테고리 검색
-    //   categories.forEach((category)=>{
-    //   let category_obj={
-    //     title:category.title,
-    //     tags:category.tags,
-    //     uploader:category.uploader,
-    //     share_user:category.share_user
-    //   }          
-    //   category_list.push(JSON.stringify(category_obj))
-    // })
     console.log(categories) 
-    res.send({"data":categories})  
+    return res.send({"data":categories})  
   })
 })
 
 /**
  * 사용자가 생성하지는 않았으나 다른 사용자로부터 공유받은 카테고리 목록 클라이언트로 넘기기
  */
-app.post('/shared-category',(req,res)=>{
-  let category_list=[]
-  console.log("shared-category req.body.data[0]: ", req.body.data[0])
-    Category.find({uploader:{$ne:req.body.data}, share_user:{$eq:req.body.data}},(err,categories)=>{ //본인은 빼고 검색 , share_user:req.body.data
-    console.log("shared category:", categories)     
-    res.send({"data":categories}) 
-  })
+app.post('/shared-category', async(req,res)=>{
+  try{
+    let categories = await Category.find({uploader:{$ne:req.body.data}, share_user:{$eq:req.body.data}})
+    let categoryUsers = []
+    for(let categoryindex = 0;categoryindex<categories.length;categoryindex++) {
+      categoryUsers = [...categoryUsers,...categories[categoryindex].share_user]
+    }
+    
+    let userlist = await UserInfo.find({_id:{$in:categoryUsers}})
+    let userMap = new Map();
+    for(let i=0;i<userlist.length;i++) {
+      userMap.set(userlist[i]._id.toString(),userlist[i].name)
+    }
+
+    for(let i=0;i<categories.length;i++) {
+      let tempUsers = []
+      for(let j=0;j<categories[i].share_user.length;j++) {
+        let temp = userMap.get(categories[i].share_user[j])
+        if(temp) {
+          tempUsers.push(temp)
+        }
+      }
+      categories[i].share_user = tempUsers
+    }
+    return res.send({
+      "data":categories,
+    }) 
+  }
+  catch(e){
+    console.log(e)
+    return res.send({
+      "data":[],
+    }) 
+  }
 })
 
 /**
@@ -406,39 +504,38 @@ app.post('/shared-category',(req,res)=>{
  * 함수 설명: 태그 목록 업데이트하는 함수
  * @param {Array, Array} assigned_tags, removed_tags 
  */
-function updateTag(assigned_tags, removed_tags){
-  console.log("assigned_tags, before remove foreach: ",assigned_tags)
-  //이미 있는 태그는 골라낸다
-  let insert_tags=[]
-  let update_tags=[]
-  Tag.find({name:{$in:assigned_tags}},(err,tags)=>{
-  console.log("tags: ",tags)
-    tags.forEach((tag)=>{
-      console.log("tag.name:", tag.name)
-      let del_index=assigned_tags.indexOf(tag.name)
-      assigned_tags.splice(del_index,1)
-      update_tags.push(tag.name)
+async function updateTag(assigned_tags, removed_tags){
+  //기존에 있는 태그는 사용된 횟수 하나씩 늘려주기  
+  try{
+    let update_tag_arr=[]
+    let update_tags=await Tag.find({name:{$in:assigned_tags}})
+    for(let update_tag=0;update_tag<update_tags.length;update_tag++){
+      update_tag_arr.push(update_tags[update_tag].name)
+      let index=assigned_tags.indexOf(update_tags[update_tag].name)
+      assigned_tags.splice(index,1)
+    }
+    console.log("assigned_tags: ",assigned_tags) //삽입할 태그
+    console.log("update_tag_arr: ",update_tag_arr) //업데이트할 태그
+
+    let insert_tags=[] //삽입할 태그를 객체로 만들어서 저장하는 곳
+    for(tag in assigned_tags){
+      let tagobj={
+        name:assigned_tags[tag],
+        used:1
+      }
+      insert_tags.push(tagobj)
+    }
+    console.log("insert_tags: ",insert_tags)
+    await Tag.insertMany(insert_tags,(err,doc)=>{
+      if(err){
+        console.log("error on insert tags:"+err);
+      }
     })
-  console.log("assigned_tags, after remove foreach: ",assigned_tags)
-  //없는 태그들은 오브젝트로 만들어 insertMany
-  for(tag in assigned_tags){
-    let tagobj={
-      name:assigned_tags[tag],
-      used:Number(1)
-    }
-    insert_tags.push(tagobj)
-  }
-  console.log("insert_tags: ",insert_tags)
-  Tag.insertMany(insert_tags,(err,doc)=>{
-    if(err){
-      console.log("error on insert tags:"+err);
-    }
-  })
-  //기존에 있는 태그는 사용된 횟수 하나씩 늘려주기
-  Tag.updateMany({name:{$in:update_tags}}, {$inc: { used: 1 } }, {upsert: false},(err,doc)=>{
+
+    await Tag.updateMany({name:{$in:update_tag_arr}}, {$inc: { used: 1 } }, {upsert: false},(err,doc)=>{
       if(err){ //새로 추가된 태그는 사용 횟수를 1 늘린다
         console.log("error on adding tags:"+err);
-      }else{ //사용되지 않게 된 태그는 사용 횟수를 1 줄인다.
+      }else{ //사용되지 않게 된 태그는 사용 횟수를 1 줄인다.(업데이트 전 후에 모두 존재했던 태그는 횟수가 1이 줄었다가 다시 1 늘어나게 됨)
         Tag.updateMany({name:{$in:removed_tags}}, {$inc: { used: -1 } }, {upsert: false},(err,doc)=>{
           if(err){
             console.log("error on declining used of removed tags:"+err);
@@ -450,10 +547,61 @@ function updateTag(assigned_tags, removed_tags){
           })
         }) 
       }
-    }) 
+    })
+  }catch(err){
+    console.log(err)
+  }
+}  
+  
+
+/**
+ * 선택한 카테고리에 해당되는 일정 목록 전달하기
+ */
+app.post('/show-certain-cat',(req,res)=>{
+  Category.findOne({title:req.body.title},(err,doc)=>{
+    let todolist=[]
+    ToDo.find({tags:{$all : doc.tags}},(err,todos)=>{
+      colorlist=['#dc1403','#dda703','#dddd03','#03dd03','#006400','#0370dd'] //우선순위별 색깔
+      todos.forEach((todo)=>{
+        let todoobj={
+          allday:todo.allday,
+          title:todo.title,
+          color:colorlist[todo.priority],
+          start:todo.start,
+          end:todo.end
+        }          
+        todolist.push(JSON.stringify(todoobj))
+      })
+      return res.send({"data":todolist}) 
+    })
   })
+})
 
+app.post('/taglist',async(req,res)=>{
+  let taglist=[]
+  let tags= await Tag.find({})
 
-}
+  for(let index=0;index<tags.length;index++){
+    let tagobj={
+      name:tags[index].name,
+      used:tags[index].used
+    }
+    taglist.push(tagobj)
+  }
+
+  let todonum=await ToDo.find({}).count()
+  return res.send({
+    "taglist":taglist,
+    "todonum":todonum
+  })
+})
+
+app.post('/checktodo',(req,res)=>{
+  console.log(req.body._id, req.body.completed)
+  ToDo.findOneAndUpdate({_id:req.body._id},{$set:{completed:req.body.completed}},(err,doc)=>{
+    console.log(doc)
+    return res.send({"data":doc})
+  })
+})
 
 app.listen(port, () => console.info(`App listening on port ${port}`))
