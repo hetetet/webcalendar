@@ -1,5 +1,4 @@
 #dashheader{
-    display: flex;
     justify-content: space-between;
     width: 100%;
 }
@@ -42,7 +41,7 @@ input[type="checkbox"]{
 }
 
 .todaytodo{
-    margin: 10px;
+    padding: 20px;
 }
 
 .todaytodo-title{

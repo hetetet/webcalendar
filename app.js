@@ -401,8 +401,8 @@ app.post('/getdayevent',async(req,res)=>{
             title:share_todos[j].title,
             start:share_todos[j].start,
             end:share_todos[j].end,
-            content:todos[j].content,
-            completed:todos[j].completed
+            content:share_todos[j].content,
+            completed:share_todos[j].completed
           }          
           todolist.push(JSON.stringify(todoobj))           
         }

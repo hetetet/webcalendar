@@ -3,13 +3,7 @@
 <h1 style="width: 100%; text-align: center" class="bold">태그 통계</h1>
 <div id="todos-num">총 일정 개수:</div>
 <div id="statsfield">
-    <div class="todoitem">
-        <span class="todoitem-name">태그 이름</span>
-        <span class="todoitem-rate">90%(5)</span>
-        <span class="todoitem-bar">
-            <span class="todoitem-bar-rate"></span>
-        </span>
-    </div>
+
 </div>
 <script>
     fetch("/taglist",{
@@ -39,13 +33,13 @@
         tag_stat_item.classList.add("todoitem");
         let tagrate=(data.taglist[index].used/tagsum*100).toFixed(1)
         tag_stat_item.innerHTML=`
-            <div class="todoitem">
+              <span>
                 <span class="todoitem-name">${data.taglist[index].name}</span>
                 <span class="todoitem-rate">${tagrate}%(${data.taglist[index].used})</span>
-                <span class="todoitem-bar">
-                    <span class="todoitem-bar-rate" style="width:${tagrate}%;"></span>
-                </span>
-            </div>`
+              </span>
+              <span class="todoitem-bar">
+                  <span class="todoitem-bar-rate" style="width:${tagrate}%;"></span>
+              </span>`
         statsfield.appendChild(tag_stat_item);
       }
     })

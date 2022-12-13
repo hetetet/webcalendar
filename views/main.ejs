@@ -11,7 +11,7 @@
       </span> 
       <span>
         <h3 style="width: 60%; text-align: left; margin-left: 5%;">생성한 일정</h3>
-        <button id="bgcolor" class="defaultbutton" style="position: inherit; width: 50%;" onclick="getTodoList()">생성한 모든 일정 보기</button> 
+        <button id="bgcolor" class="defaultbutton" style="position: inherit; width: 50%;" onclick="getTodoList()">모든 일정 보기</button> 
       </span> 
       <div id="created-category">        
       </div>  
@@ -607,69 +607,12 @@ function renderCalendar(eventstrparam){
         todolist_list.innerHTML="" //일정 목록 모달 내 일정 목록 초기화
         for(index in eventstrlist){
           let event=JSON.parse(eventstrlist[index])
-          let evt_start=String(event.start)
-          let evt_end=String(event.end)
-          //console.log("evt_start: ",evt_start)
-          //console.log("evt_end: ",evt_end)
-          if(event.allday){
-            evt_start=evt_start.split('T')[0]
-            //console.log("allday true, evt_Start: ",evt_start)
-          }else{
-            evt_start=evt_start.slice(0,-8)
-            //console.log("allday false, evt_Start: ",evt_start)
-          }
-
-          if(event.allday){
-            evt_end=evt_end.split('T')[0]
-            //console.log("allday true, evt_end: ",evt_end)
-          }else{
-            evt_end=evt_end.slice(0,-8)
-            //console.log("allday false, evt_end: ",evt_end)
-          }
-
-          evt_start=evt_start
-          evt_end=evt_end
-          
-          if((event.allday && evt_start<=startpoint && evt_end>=startpoint) 
-          || (!event.allday && evt_start<endpoint && evt_end>=startpoint)){
+          if((event.allday && event.start<=startpoint && event.end>=startpoint) 
+          || (!event.allday && event.start<endpoint && event.end>=startpoint)){
             console.log("오늘의 일정: ",event)
-            let start_day=event.start.split('T')[0].split('-')            
-            let end_day=event.end.split('T')[0].split('-')
-            let start_time=""
-            let end_time=""
-            if(!event.allday){
-              start_time=event.start.split('T')[1].split(':')
-              end_time=event.end.split('T')[1].split(':')
-            }
+            let start_date_str=timeformat(event.start)
+            let end_date_str=timeformat(event.end)
 
-            let start_date_str=start_day[0]+"년 "+String(Number(start_day[1]))+"월 "+String(Number(start_day[2]))+"일 "
-            let end_date_str=end_day[0]+"년 "+String(Number(end_day[1]))+"월 "+String(Number(end_day[2]))+"일 "
-            
-            if(!event.allday){
-              let startminstr
-              let endminstr
-
-              if(Number(start_time[0])==0)
-                startminstr="오전 12시 "
-              else if(Number(start_time[0])<12)
-                startminstr="오전 "+String(Number(start_time[0]))+"시 "
-              else if(Number(start_time[0])==12)
-                startminstr="오후 12시 "
-              else
-                startminstr="오후 "+String(Number(start_time[0]-12))+"시 "
-
-              if(Number(end_time[0])==0)
-                endminstr="오전 12시 "
-              else if(Number(end_time[0])<12)
-                endminstr="오전 "+String(Number(end_time[0]))+"시 "
-              else if(Number(end_time[0])==12)
-                endminstr="오후 12시 "
-              else
-                endminstr="오후 "+String(Number(end_time[0]-12))+"시 "   
-              
-              start_date_str+=startminstr+String(Number(start_time[1]))+" 분"
-              end_date_str+=endminstr+String(Number(end_time[1]))+" 분"
-            }
             console.log(start_date_str,end_date_str)
             let todoItem=document.createElement("div")
             todoItem.classList.add("todo-element");
@@ -692,6 +635,33 @@ function renderCalendar(eventstrparam){
       }
     });
     calendar.render();
+}
+
+/**
+ *년,월,일,시,분,초로 시간 포맷 변경 
+ */ 
+ function timeformat(datestr){
+  if(datestr.includes('T')){ //allday:false
+    let returnstr=""
+    datestrs=datestr.split('T')
+    datestrs[0]=datestrs[0].split('-') //날짜 부분
+    datestrs[1]=datestrs[1].split(':') //시간 부분
+    returnstr+=datestrs[0][0]+"년 "+datestrs[0][1]+"월 "+datestrs[0][2]+"일 "
+    if(Number(datestrs[1][0])==0){
+      returnstr+='오전 12시 '
+    }else if(datestrs[1][0]<12){
+      returnstr+='오전 '+datestrs[1][0]+'시 '
+    }else if(datestrs[1][0]==12){
+      returnstr+='오후 12시 '
+    }else{
+      returnstr+='오후 '+String(datestrs[1][0]-12)+'시 '
+    }
+    returnstr+=datestrs[1][1]+"분"
+    return returnstr
+  }else{ //allday:true
+    datestrs=datestr.split('-')
+    return datestrs[0]+"년 "+datestrs[1]+"월 "+datestrs[2]+"일"
+  }
 }
 </script>
 

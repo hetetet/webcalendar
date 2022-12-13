@@ -1,7 +1,6 @@
 <link href='/css/dashboard.css' rel='stylesheet' />
 <span id="dashheader">
-    <button id="bgcolor"  class="defaultbutton" onclick="location.href='/main'" >홈으로</button>
-    <button id="addTodoBtn"  class="defaultbutton" style="margin-right: 10px;">일정 추가</button>
+    <button id="home" class="defaultbutton" onclick="location.href='/main'" >홈으로</button>
 </span>
 <div id="todocontainer">
     <div class="modal hidden">
@@ -133,6 +132,7 @@
         </div>
     </div>
     <h1 style="width: 100%; text-align: center;" class="bold">대시보드</h1>
+    <button id="addTodoBtn" class="defaultbutton">일정 추가</button>
     <h2 id="complete-rate">완료율: 0%</h2>
     <div id="todolist"></div>    
 </div>
@@ -205,10 +205,11 @@ fetch("/getdayevent",{
                     `
                 todaytodolist.appendChild(todayTodoItem)
             }
-        }
-        complete_rate.innerHTML='완료율:'+String(completednum/eventnum*100)+'%'
+        }   
         if(eventnum==0)
             todaytodolist.innerHTML='오늘 일정이 없습니다.'        
+        else
+            complete_rate.innerHTML='완료율:'+String((completednum/eventnum*100).toFixed(1))+'%'
     })  
 }); 
 /**
@@ -225,7 +226,7 @@ function checkTodayTodo(ref,_id){
         completednum--;
         ref.parentNode.classList.remove('del')
     }
-    complete_rate.innerHTML='완료율:'+String(completednum/eventnum*100)+'%'
+    complete_rate.innerHTML='완료율:'+String((completednum/eventnum*100).toFixed(1))+'%'
     fetch("/checktodo",{
     method: "POST",
     headers: {
