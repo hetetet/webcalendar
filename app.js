@@ -12,6 +12,7 @@ const bodyparser = require('body-parser');
 const mongoose=require('mongoose');
 const { execPath } = require('process');
 const { log } = require('console');
+const { Session } = require('inspector');
 require('./public/models/db')
 const UserInfo=mongoose.model('UserInfo')
 const Tag=mongoose.model('Tag')
@@ -33,8 +34,10 @@ let naver_api_url = "http://127.0.0.1:3000/auth/naver/";
 const kakao = {
   client_id:'6428537aa64c39b3916f8969429bf7ff',
   clientSecret: 'RKylqiIpflwBHxnLYDYKHuHXrm8WnyPn',
-  redirectUri: 'http://127.0.0.1:3000/auth/kakao/'
+  redirectUri: 'http://127.0.0.1:3000/auth/kakao/',
+  LOGOUT_REDIRECT_URI: 'http://127.0.0.1:3000'
 }
+let kakao_token;
 
 app.use('/css',express.static(path.join(__dirname+'/public/css')))
 app.use('/script',express.static(path.join(__dirname+'/public/script')))
@@ -59,24 +62,21 @@ app.use(session({
   resave: false,	//세션을 언제나 저장할지 설정함
   saveUninitialized: true,	//세션이 저장되기 전 uninitialized 상태로 미리 만들어 저장
   cookie: {	//세션 쿠키 설정 (세션 관리 시 클라이언트에 보내는 쿠키)
-    httpOnly: true,
-  },
+      httpOnly: true,
+    },
   store: new fileStore()
 }));
 
 app.get('/', (req,res)=>{
-  console.log("on root with session ",req.session)
   naver_api_url = 'https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=' + naver_client_id + '&redirect_uri=' + naver_redirectURI + '&state=' + naver_state;
-  if(req.session.loginby=='naver')
-    naver_api_url='/main'
   naverbtn="<a href='"+ naver_api_url + "'><img height='50' src='/image/naver_login_btn.png'/></a>"
-  res.render('login', {layout:'./layouts/loginlayout', naverbtn:naverbtn})
+  return res.render('login', {layout:'./layouts/loginlayout', naverbtn:naverbtn})
 })
 
 app.get('/auth/naver/', function (req, res) {
   if(req.session.user && req.session.loginby=='naver'){
     console.log(req.session)
-    res.redirect('/main')
+    return res.redirect('/main')
   }else{
     console.log("login by naver, no session")
   
@@ -95,9 +95,8 @@ app.get('/auth/naver/', function (req, res) {
         //요청은 한번씩만 적용.
         //res.writeHead(200, {'Content-Type': 'text/json;charset=utf-8'});
         naver_token=JSON.parse(body).access_token
-
         bearerToken = "Bearer " + naver_token; // Bearer 다음에 공백 추가
-        res.redirect('/naver/member/'+bearerToken);
+        return res.redirect('/naver/member/'+bearerToken);
       }else{
         res.status(response.statusCode).end();
         console.log('error = ' + response.statusCode);
@@ -128,8 +127,9 @@ app.get('/naver/member/:token', function (req, res) {
         share_category:[],         
       }; //세션 저장
       req.session.loginby='naver'
+      req.session.token=naver_token
       req.session.save(function(err){
-        res.redirect('/main');
+        return res.redirect('/main');
       });
     }else{
       console.log('error');
@@ -145,15 +145,15 @@ app.get('/auth/kakao/',async(req,res)=>{
   console.log("start auth kakao");
   if(req.session.user && req.session.loginby=='kakao'){
     console.log("before authorize: ", req.session)
-    res.redirect('/main')
+    return res.redirect('/main')
   }else{
     console.log("before authorize: no session")  
     console.log("code: ", req.query.code);
 
-    let token;
+
     let user;
     try{
-        token = await axios({
+        kakao_token = await axios({
           method: 'POST',
           url: 'https://kauth.kakao.com/oauth/token',
           headers:{
@@ -174,37 +174,45 @@ app.get('/auth/kakao/',async(req,res)=>{
     }  
 
     try{
-        console.log("access token: ", token.data);//access정보를 가지고 또 요청해야 정보를 가져올 수 있음.
-        user = await axios({
+        console.log("access token: ", kakao_token.data.access_token);//access정보를 가지고 또 요청해야 정보를 가져올 수 있음.
+        // user = await axios({
+        //   method:'GET',
+        //   url:'https://kapi.kakao.com/v2/user/me',
+        //   headers:{
+        //     Authorization: `Bearer ${kakao_token.data.access_token}`
+        //   }
+        // })
+        await axios({
           method:'GET',
           url:'https://kapi.kakao.com/v2/user/me',
           headers:{
-            'Authorization': `Bearer ${token.data.access_token}`
+            Authorization: `Bearer ${kakao_token.data.access_token}`
           }
+        }).then(user=>{
+          let userdata={
+            _id:user.data.id,
+            name:user.data.properties.nickname, 
+            pfpurl:user.data.properties.profile_image,
+            bg_color:"lightblue", 
+            share_category:[],   
+          }
+          req.session.user=userdata
+          req.session.loginby='kakao'
+          req.session.token=kakao_token.data.access_token
+          console.log("kakao_token right before redirect to main: ", req.session.token);
+          return res.redirect('/main')
         })
     }catch(e){
       console.log("error!", e);
       res.json(e);
     }
-    let userdata={
-      _id:user.data.id,
-      name:user.data.properties.nickname, 
-      pfpurl:user.data.properties.profile_image,
-      bg_color:"lightblue", 
-      share_category:[],   
-    }
-    req.session.user=userdata; //세션 저장
-    req.session.loginby='kakao'
-    req.session.save()
-
-    res.redirect('/main')
   }
 });
 
 app.get('/main',(req,res)=>{
-  if(!req.session.user){
+  if(!req.session.user){ //!req.session.user
     console.log('no user session so redirect to /');
-    res.redirect('/')
+    return res.redirect('/')
   }
   else{
     console.log("req.session.user.id:", req.session.user._id)
@@ -230,20 +238,18 @@ app.get('/main',(req,res)=>{
   }
 })
 
-app.get('/logout',(req,res)=>{
-  res.redirect('http://nid.naver.com/nidlogin.logout');
-})
-
+/**
+ * 대시보드로 이동
+ */
 app.get('/dashboard',(req,res)=>{
-  res.render('dashboard', {layout:'./layouts/full-width', title:'calendar-dashboard', loginby:req.session.loginby, userinfo: JSON.stringify(req.session.user)})
+  return res.render('dashboard', {layout:'./layouts/full-width', title:'calendar-dashboard', loginby:req.session.loginby, userinfo: JSON.stringify(req.session.user)})
 })
 
+/**
+ * 태그 통계로 이동
+ */
 app.get('/stats',(req,res)=>{
-  res.render('stats', {layout:'./layouts/full-width', title:'calendar-statistics', loginby:req.session.loginby, userinfo: JSON.stringify(req.session.user)})
-})
-
-app.get('http://nid.naver.com/nidlogin.logout',(req,res)=>{
-  res.redirect('http://nid.naver.com/nidlogin.logout');
+  return res.render('stats', {layout:'./layouts/full-width', title:'calendar-statistics', loginby:req.session.loginby, userinfo: JSON.stringify(req.session.user)})
 })
 
 /**
@@ -294,14 +300,71 @@ app.post('/savecategory',(req,res)=>{
 })
 
 /**
+ * 로그아웃 라우팅
+ */
+app.get('/logout',async(req,res)=>{
+  
+  if(req.session.loginby=='naver'){ //네이버 로그아웃
+    console.log("naver_token: ", naver_token)
+    naver_api_url = 'https://nid.naver.com/oauth2.0/token?grant_type=delete&client_id='
+    +naver_client_id+'&client_secret='+naver_client_secret+'&access_token='+req.session.token+'&service_provider=NAVER';
+    const options = {
+      url: naver_api_url,
+      headers: { Authorization: `Bearer ${req.session.token}`}
+    };   
+    
+    request.get(options, function (error, response, body) {
+      if(!error && response.statusCode == 200) {
+        console.log(response.body)
+        req.session.destroy()
+        return res.redirect('/');
+      }else{
+        res.status(response.statusCode).end();
+        console.log('error = ' + response.statusCode);
+      }
+    });  
+  }else{ //카카오 로그아웃
+    console.log("kakao token:",req.session.token)
+    try{
+        let logoutjson=await axios({
+          method:'POST',
+          url:'https://kapi.kakao.com/v1/user/unlink',
+          headers:{
+            Authorization: `Bearer ${req.session.token}`
+          },
+          data: qs.stringify({//객체를 string 으로 변환
+            target_id_type: 'user_id',
+            target_id: req.session.user._id
+          })
+        })
+        console.log("logoutjson: ", logoutjson.data) 
+        req.session.destroy()
+        return res.redirect('/');
+      }catch(e){
+        console.log("error!", e);
+        return res.json(e);
+      }
+    //  try{
+    //     let logoutjson=await axios({
+    //       method:'GET',
+    //       url:`https://kauth.kakao.com/oauth/logout?client_id=${kakao.client_id}&logout_redirect_uri=${kakao.LOGOUT_REDIRECT_URI}`
+    //     })
+    //     req.session.destroy()
+    //     res.redirect('/');      
+    //  }catch(e){
+    //     console.log("error!", e);
+    //     res.json(e);    
+    //  }
+    }
+  })
+
+
+/**
  * 수정할 카테고리의 정보를 보내기
  */
 app.post('/readcategory',(req,res)=>{
   Category.findOne({title:req.body.title},(err,category)=>{
-    console.log("category:", category)
-    console.log("category.share_user:", category.share_user)
     UserInfo.find({_id:{$in:category.share_user}},(err,users)=>{
-      console.log("share_user:", users)
       return res.send({
         "data":category,
         "users":users
@@ -309,14 +372,12 @@ app.post('/readcategory',(req,res)=>{
     })   
   })  
 })
-
 /**
  * 카테고리 삭제하기
  */
 app.post('/deletecategory',(req,res)=>{
   console.log("title:", req.body.title)  
   Category.findOne({title:req.body.title},(err,category)=>{
-    console.log(category);
     updateTag([],category.tags)
     Category.deleteOne({title:req.body.title},(err,doc)=>{
       if(err){
@@ -500,8 +561,7 @@ app.post('/shared-category', async(req,res)=>{
 })
 
 /**
- * 게시자: 이연주,
- * 함수 설명: 태그 목록 업데이트하는 함수
+ * 태그 목록 업데이트하는 함수
  * @param {Array, Array} assigned_tags, removed_tags 
  */
 async function updateTag(assigned_tags, removed_tags){
@@ -578,27 +638,31 @@ app.post('/show-certain-cat',(req,res)=>{
 })
 
 app.post('/taglist',async(req,res)=>{
-  let taglist=[]
-  let tags= await Tag.find({})
-
-  for(let index=0;index<tags.length;index++){
-    let tagobj={
-      name:tags[index].name,
-      used:tags[index].used
+  try{
+    let taglist=[]
+    let tags= await Tag.find({})
+  
+    for(let index=0;index<tags.length;index++){
+      let tagobj={
+        name:tags[index].name,
+        used:tags[index].used
+      }
+      taglist.push(tagobj)
     }
-    taglist.push(tagobj)
+  
+    let todonum=await ToDo.find({}).count()
+    return res.send({
+      "taglist":taglist,
+      "todonum":todonum
+    })
+  }catch(e){
+    console.log(e);
   }
-
-  let todonum=await ToDo.find({}).count()
-  return res.send({
-    "taglist":taglist,
-    "todonum":todonum
-  })
 })
 
 app.post('/checktodo',(req,res)=>{
   console.log(req.body._id, req.body.completed)
-  ToDo.findOneAndUpdate({_id:req.body._id},{$set:{completed:req.body.completed}},(err,doc)=>{
+  ToDo.findOneAndUpdate({_id : req.body._id},{$set : {completed : req.body.completed}},(err,doc)=>{
     console.log(doc)
     return res.send({"data":doc})
   })

@@ -1,3 +1,9 @@
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.0.1/kakao.min.js"
+    integrity="sha384-eKjgHJ9+vwU/FCSUG3nV1RKFolUXLsc6nLQ2R1tD0t4YFPCvRmkcF8saIfOZNWf/" crossorigin="anonymous">
+</script>
+<script>
+    Kakao.init('04ecd63a00e52a34987da1c48ce1dfc2'); // 사용하려는 앱의 JavaScript 키 입력
+</script>
 <header id="header_area">
     <% if (loginby=='naver') { %>
         <img src="/image/navericon.png" id="naver" class="loginby" />      
@@ -26,13 +32,6 @@
         console.log('change bg color to ','<%-JSON.parse(userinfo).bg_color %>')
     });
 
-    function logout(){
-      if('<%- loginby %>'=='naver'){
-        window.open('http://nid.naver.com/nidlogin.logout')
-        window.location.href=('http://127.0.0.1:3000')
-      }
-    }
-
     function showBgColorList(){
         bg_color_list=document.getElementById('bg_color_list');
         if(bg_color_list.style.visibility == "visible"){
@@ -45,7 +44,6 @@
     }
 
     function changeBgColor(color){
-
         header_area.style.backgroundColor=color;
         let data = {
             _id: "<%- JSON.parse(userinfo)._id %>",
@@ -57,6 +55,8 @@
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(data)
-        }).then((response) => console.log("response:"+response));
+        }).then((response) => console.log("response:" + response));
+        bg_color_list.style.visibility = "hidden"
     }
+
   </script>

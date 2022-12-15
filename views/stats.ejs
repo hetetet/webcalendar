@@ -33,13 +33,13 @@
         tag_stat_item.classList.add("todoitem");
         let tagrate=(data.taglist[index].used/tagsum*100).toFixed(1)
         tag_stat_item.innerHTML=`
-              <span>
-                <span class="todoitem-name">${data.taglist[index].name}</span>
-                <span class="todoitem-rate">${tagrate}%(${data.taglist[index].used})</span>
-              </span>
-              <span class="todoitem-bar">
-                  <span class="todoitem-bar-rate" style="width:${tagrate}%;"></span>
-              </span>`
+          <span>
+            <span class="todoitem-name">${data.taglist[index].name}</span>
+            <span class="todoitem-rate">${tagrate}% (${data.taglist[index].used})</span>
+          </span>
+          <span class="todoitem-bar">
+              <span class="todoitem-bar-rate" style="width:${tagrate}%;"></span>
+          </span>`
         statsfield.appendChild(tag_stat_item);
       }
     })
