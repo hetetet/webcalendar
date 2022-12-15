@@ -200,7 +200,10 @@ app.get('/auth/kakao/',async(req,res)=>{
           req.session.loginby='kakao'
           req.session.token=kakao_token.data.access_token
           console.log("kakao_token right before redirect to main: ", req.session.token);
-          return res.redirect('/main')
+
+          req.session.save(function(err){
+            return res.redirect('/main');
+          });
         })
     }catch(e){
       console.log("error!", e);
@@ -357,7 +360,6 @@ app.get('/logout',async(req,res)=>{
     //  }
     }
   })
-
 
 /**
  * 수정할 카테고리의 정보를 보내기
@@ -592,11 +594,11 @@ async function updateTag(assigned_tags, removed_tags){
       }
     })
 
-    await Tag.updateMany({name:{$in:update_tag_arr}}, {$inc: { used: 1 } }, {upsert: false},(err,doc)=>{
+    await Tag.updateMany({name: {$in:update_tag_arr}}, {$inc: { used: 1 } }, {upsert: false},(err,doc)=>{
       if(err){ //새로 추가된 태그는 사용 횟수를 1 늘린다
         console.log("error on adding tags:"+err);
       }else{ //사용되지 않게 된 태그는 사용 횟수를 1 줄인다.(업데이트 전 후에 모두 존재했던 태그는 횟수가 1이 줄었다가 다시 1 늘어나게 됨)
-        Tag.updateMany({name:{$in:removed_tags}}, {$inc: { used: -1 } }, {upsert: false},(err,doc)=>{
+        Tag.updateMany({name: {$in:removed_tags}}, {$inc: { used: -1 } }, {upsert: false},(err,doc)=>{
           if(err){
             console.log("error on declining used of removed tags:"+err);
           }
